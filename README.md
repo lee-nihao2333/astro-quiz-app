@@ -84,6 +84,8 @@ dist/astro-quiz-debug.apk
 
 构建出的 `www/` 不依赖 fetch，**直接用浏览器双击打开 `www/index.html` 也能正常做题**（方便在没有 Android 环境时检查界面）。
 
+> 注意：不要直接双击打开 `src/index.html`。`src/` 只是源码，`questions.js` 是构建时由 `scripts/build-web.mjs` 生成到 `www/` 的；直接打开源码目录里的 `index.html` 会因为缺少 `questions.js` 而显示「题库加载失败」。请先 `npm run build`，再打开 `www/index.html`。
+
 ## 如何更新题库
 
 1. 把新的题库 JSON 放到 `data/` 下，文件名使用 4 位年份（如 `2021.json`），格式同上。
