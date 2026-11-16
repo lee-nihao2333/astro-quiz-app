@@ -1,0 +1,15 @@
+{
+  "appId": "com.example.astroquiz",
+  "appName": "天文知识竞赛",
+  "webDir": "www",
+  "backgroundColor": "#0b0f1e",
+  "zoomEnabled": false,
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover",
+      "style": "DARK",
+      "hidden": false
+    }
+  }
+}

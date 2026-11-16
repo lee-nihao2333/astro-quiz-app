@@ -1,0 +1,24 @@
+# 构建产物
+www/
+dist/
+
+# 依赖
+node_modules/
+
+# Capacitor / Android 本地配置与构建缓存
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+.gradle/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# 系统 / 编辑器杂项
+.DS_Store
+.idea/
+.vscode/

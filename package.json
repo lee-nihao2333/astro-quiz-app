@@ -1,0 +1,19 @@
+{
+  "name": "astro-quiz-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "天文知识竞赛刷题应用（纯前端 + Capacitor Android 离线应用）",
+  "scripts": {
+    "build": "node scripts/build-web.mjs",
+    "sync": "npm run build && npx cap sync android",
+    "apk": "npm run sync && cd android && ./gradlew assembleDebug && cd .. && mkdir -p dist && cp android/app/build/outputs/apk/debug/app-debug.apk dist/astro-quiz-debug.apk"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2"
+  }
+}
