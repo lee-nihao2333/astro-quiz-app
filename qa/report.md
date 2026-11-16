@@ -1,10 +1,10 @@
 # Web 端验收报告（qa/verify.mjs）
 
-- 生成时间：2026-11-16T14:07:14.136Z
+- 生成时间：2026-11-16T14:22:21.389Z
 - 被测页面：`/home/marvin/astro-quiz-app/.agents/worktrees/dsh-e5c67a80-9e29/www/index.html`（file:// 打开，未启动服务器）
 - 浏览器：Chromium 156.0.8078.4（playwright-core 1.49.0）
 - 视口：360×640、412×915（deviceScaleFactor=1，isMobile+hasTouch）
-- git HEAD：fd4a34b
+- git HEAD：3904fd1
 - 结论：**全部通过**（共 99 条断言，通过 99）
 
 ## 断言明细
@@ -19,19 +19,19 @@
 | 6 | 360x640/progress-parse | 初始题号解析 | 1 | 1 | PASS |
 | 7 | 360x640/option-count | 选项按钮数量 | 4 | 4 | PASS |
 | 8 | 360x640/option-letters | 选项字母 A B C D | A,B,C,D | A,B,C,D | PASS |
-| 9 | 360x640/option-text-nonempty | 4 个选项文字均非空 | true | ["ISON","PanSTARRS","HALLEY","SWIFT"] | PASS |
+| 9 | 360x640/option-text-nonempty | 4 个选项文字均非空 | true | ["北极星2等","牛郎星1等","织女星0等","天狼星-1等"] | PASS |
 | 10 | 360x640/state-initial | 初始 localStorage 状态合法（order 485 唯一 / index 0 / answers=[]） | true | order=485, index=0, answers=0 | PASS |
 | 11 | 360x640/initial-no-h-overflow | 初始界面无横向溢出 | true | scrollWidth=360, innerWidth=360, overflow=0px | PASS |
 | 12 | 360x640/shot-initial-size | 初始截图尺寸 | 360x640 | 360x640 | PASS |
 | 13 | 360x640/after-answer-progress | 点击选项后进度前进 1 题 | 第 2 / 485 题 | 第 2 / 485 题 | PASS |
 | 14 | 360x640/after-answer-index | 选择题号解析 | 2 | 2 | PASS |
-| 15 | 360x640/after-answer-question-changed | 换到下一题（题干变化） | true | M42 位于下面哪个星座之中 | PASS |
-| 16 | 360x640/after-answer-state | 作答落盘（index=1 / answers 1 条 / 记录 choice=0） | true | index=1, answers=[{"id":"2013-2","choice":0}] | PASS |
+| 15 | 360x640/after-answer-question-changed | 换到下一题（题干变化） | true | 太阳黑子位于太阳的哪一层？ | PASS |
+| 16 | 360x640/after-answer-state | 作答落盘（index=1 / answers 1 条 / 记录 choice=0） | true | index=1, answers=[{"id":"2017-8","choice":0}] | PASS |
 | 17 | 360x640/after-answer-fade-cleared | 淡入淡出结束（fade class 移除） | true | class=false | PASS |
 | 18 | 360x640/after-answer-option-count | 换题后选项按钮数量 | 4 | 4 | PASS |
 | 19 | 360x640/shot-after-answer-size | 作答后截图尺寸 | 360x640 | 360x640 | PASS |
 | 20 | 360x640/resume-progress | 刷新后恢复进度 | 第 2 / 485 题 | 第 2 / 485 题 | PASS |
-| 21 | 360x640/resume-question | 刷新后恢复同一道题（下一道未答题） | M42 位于下面哪个星座之中 | M42 位于下面哪个星座之中 | PASS |
+| 21 | 360x640/resume-question | 刷新后恢复同一道题（下一道未答题） | 太阳黑子位于太阳的哪一层？ | 太阳黑子位于太阳的哪一层？ | PASS |
 | 22 | 360x640/resume-state | 刷新后 localStorage 仍为 index=1 / answers=1 | true | index=1, answers=1 | PASS |
 | 23 | 360x640/resume-no-h-overflow | 刷新后无横向溢出 | true | overflow=0px | PASS |
 | 24 | 360x640/resume-option-count | 刷新后选项按钮数量 | 4 | 4 | PASS |
@@ -67,19 +67,19 @@
 | 54 | 412x915/progress-parse | 初始题号解析 | 1 | 1 | PASS |
 | 55 | 412x915/option-count | 选项按钮数量 | 4 | 4 | PASS |
 | 56 | 412x915/option-letters | 选项字母 A B C D | A,B,C,D | A,B,C,D | PASS |
-| 57 | 412x915/option-text-nonempty | 4 个选项文字均非空 | true | ["黄道十二宫","二十八宿","360度","三垣"] | PASS |
+| 57 | 412x915/option-text-nonempty | 4 个选项文字均非空 | true | ["水星","木星","土星","谷神星"] | PASS |
 | 58 | 412x915/state-initial | 初始 localStorage 状态合法（order 485 唯一 / index 0 / answers=[]） | true | order=485, index=0, answers=0 | PASS |
 | 59 | 412x915/initial-no-h-overflow | 初始界面无横向溢出 | true | scrollWidth=412, innerWidth=412, overflow=0px | PASS |
 | 60 | 412x915/shot-initial-size | 初始截图尺寸 | 412x915 | 412x915 | PASS |
 | 61 | 412x915/after-answer-progress | 点击选项后进度前进 1 题 | 第 2 / 485 题 | 第 2 / 485 题 | PASS |
 | 62 | 412x915/after-answer-index | 选择题号解析 | 2 | 2 | PASS |
-| 63 | 412x915/after-answer-question-changed | 换到下一题（题干变化） | true | 某颗恒星绝对星等为 0 等，视星等为 5 等，求它到我们之间 | PASS |
-| 64 | 412x915/after-answer-state | 作答落盘（index=1 / answers 1 条 / 记录 choice=0） | true | index=1, answers=[{"id":"2009-36","choice":0}] | PASS |
+| 63 | 412x915/after-answer-question-changed | 换到下一题（题干变化） | true | 全世界最大的单口径球面射电望远镜位于哪个国家？ | PASS |
+| 64 | 412x915/after-answer-state | 作答落盘（index=1 / answers 1 条 / 记录 choice=0） | true | index=1, answers=[{"id":"2011-23","choice":0}] | PASS |
 | 65 | 412x915/after-answer-fade-cleared | 淡入淡出结束（fade class 移除） | true | class=false | PASS |
 | 66 | 412x915/after-answer-option-count | 换题后选项按钮数量 | 4 | 4 | PASS |
 | 67 | 412x915/shot-after-answer-size | 作答后截图尺寸 | 412x915 | 412x915 | PASS |
 | 68 | 412x915/resume-progress | 刷新后恢复进度 | 第 2 / 485 题 | 第 2 / 485 题 | PASS |
-| 69 | 412x915/resume-question | 刷新后恢复同一道题（下一道未答题） | 某颗恒星绝对星等为 0 等，视星等为 5 等，求它到我们之间的距离？ | 某颗恒星绝对星等为 0 等，视星等为 5 等，求它到我们之间的距离？ | PASS |
+| 69 | 412x915/resume-question | 刷新后恢复同一道题（下一道未答题） | 全世界最大的单口径球面射电望远镜位于哪个国家？ | 全世界最大的单口径球面射电望远镜位于哪个国家？ | PASS |
 | 70 | 412x915/resume-state | 刷新后 localStorage 仍为 index=1 / answers=1 | true | index=1, answers=1 | PASS |
 | 71 | 412x915/resume-no-h-overflow | 刷新后无横向溢出 | true | overflow=0px | PASS |
 | 72 | 412x915/resume-option-count | 刷新后选项按钮数量 | 4 | 4 | PASS |
@@ -115,18 +115,18 @@
 
 | 文件 | 视口 | 尺寸 | 大小 |
 |---|---|---|---|
-| 360x640-initial.png | 360x640 | 360×640 | 114.6 KiB |
-| 360x640-after-answer.png | 360x640 | 360×640 | 99.3 KiB |
-| 360x640-resume.png | 360x640 | 360×640 | 99.3 KiB |
+| 360x640-initial.png | 360x640 | 360×640 | 101.0 KiB |
+| 360x640-after-answer.png | 360x640 | 360×640 | 99.5 KiB |
+| 360x640-resume.png | 360x640 | 360×640 | 99.5 KiB |
 | 360x640-long-question.png | 360x640 | 360×640 | 161.5 KiB |
 | 360x640-long-stem.png | 360x640 | 360×640 | 140.1 KiB |
-| 360x640-double-click.png | 360x640 | 360×640 | 103.7 KiB |
-| 412x915-initial.png | 412x915 | 412×915 | 154.5 KiB |
-| 412x915-after-answer.png | 412x915 | 412×915 | 155.8 KiB |
-| 412x915-resume.png | 412x915 | 412×915 | 155.8 KiB |
+| 360x640-double-click.png | 360x640 | 360×640 | 111.8 KiB |
+| 412x915-initial.png | 412x915 | 412×915 | 179.6 KiB |
+| 412x915-after-answer.png | 412x915 | 412×915 | 148.7 KiB |
+| 412x915-resume.png | 412x915 | 412×915 | 148.7 KiB |
 | 412x915-long-question.png | 412x915 | 412×915 | 256.8 KiB |
 | 412x915-long-stem.png | 412x915 | 412×915 | 190.6 KiB |
-| 412x915-double-click.png | 412x915 | 412×915 | 170.7 KiB |
+| 412x915-double-click.png | 412x915 | 412×915 | 146.1 KiB |
 
 ## 控制台错误 / 页面异常 / 请求失败
 
