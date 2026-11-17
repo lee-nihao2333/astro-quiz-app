@@ -16,6 +16,8 @@ Outputs (RGBA PNG, in ./assets):
     icon-background.png    1024 x 1024  adaptive-icon background (gradient+stars)
     splash.png             2732 x 2732  dark splash, small centred emblem
     splash-dark.png        2732 x 2732  darker variant of the splash
+    splash-logo.png        1024 x 1024  transparent centred emblem used by the
+                                        Android launch screen (never stretched)
 
 Design: deep navy/black radial gradient (#0b0f1e -> #1b2340), scattered stars,
 subtle nebula haze, a cyan gas-giant with a tilted golden ring, a small
@@ -32,6 +34,18 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = os.path.join(ROOT, "assets")
+ANDROID = os.path.join(ROOT, "android")
+ANDROID_RES = os.path.join(ANDROID, "app", "src", "main", "res")
+ANDROID_SPLASH_RES = os.path.join(ANDROID_RES, "drawable-nodpi")
+SPLASH_LOGO_DP = 256  # launch logo 按 256dp 生成各密度，居中显示且不拉伸
+SPLASH_LOGO_SIZE = 1024  # assets/ 中的源图
+SPLASH_LOGO_DENSITIES = {
+    "mdpi": 1.0,
+    "hdpi": 1.5,
+    "xhdpi": 2.0,
+    "xxhdpi": 3.0,
+    "xxxhdpi": 4.0,
+}
 
 # --------------------------------------------------------------------------
 # palette
@@ -688,6 +702,11 @@ def main():
     fg.save(os.path.join(ASSETS, "icon-foreground.png"))
     _progress("icon-foreground.png", fg)
 
+    # 启动页居中 logo：透明背景；Android 只做居中、不做拉伸，按各密度生成
+    splash_logo = fg.resize((SPLASH_LOGO_SIZE, SPLASH_LOGO_SIZE), Image.LANCZOS)
+    splash_logo.save(os.path.join(ASSETS, "splash-logo.png"))
+    _progress("splash-logo.png", splash_logo)
+
     bg = build_background_icon(1024)
     bg.save(os.path.join(ASSETS, "icon-background.png"))
     _progress("icon-background.png", bg)
@@ -699,6 +718,23 @@ def main():
     splash_dark = build_splash(2732, dark=True)
     splash_dark.save(os.path.join(ASSETS, "splash-dark.png"))
     _progress("splash-dark.png", splash_dark)
+
+    # Android 启动页资源：深色星空底（无可识别主体，可铺满）+ 居中 logo（不缩放）。
+    # 直接把方形原图设成 window background 会被系统拉伸到屏幕比例，圆形行星会
+    # 被压扁；改用 layer-list（launch_background.xml）后主体始终等比居中。
+    if os.path.isdir(ANDROID):
+        os.makedirs(ANDROID_SPLASH_RES, exist_ok=True)
+        bg.save(os.path.join(ANDROID_SPLASH_RES, "splash_background.png"))
+        for density, scale in SPLASH_LOGO_DENSITIES.items():
+            out = os.path.join(ANDROID_RES, "drawable-" + density)
+            os.makedirs(out, exist_ok=True)
+            size = int(round(SPLASH_LOGO_DP * scale))
+            logo = fg.resize((size, size), Image.LANCZOS)
+            logo.save(os.path.join(out, "splash_logo.png"), optimize=True)
+        print(
+            "  wrote android/app/src/main/res/drawable-nodpi/"
+            "splash_background.png + drawable-{mdpi..xxxhdpi}/splash_logo.png"
+        )
 
     if not self_check():
         raise SystemExit(1)

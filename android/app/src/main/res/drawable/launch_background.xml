@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 星空底图：没有可识别的主体，等比拉伸/铺满不会让用户看出变形 -->
+    <item>
+        <bitmap
+            android:gravity="fill"
+            android:src="@drawable/splash_background" />
+    </item>
+    <!-- 居中 logo：按固有像素居中显示，不做任何缩放，避免圆形行星被压扁 -->
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/splash_logo" />
+    </item>
+</layer-list>
