@@ -2,7 +2,8 @@
 //
 // 覆盖：
 //   1. QUESTION_BANK 485 题、进度文本格式、恰好 4 个选项
-//   2. 360×640 / 412×915：初始截图 → 点击选项 → 断言前进 1 题 → 截图 → 刷新续做断言 → 截图
+//   2. 360×640 / 412×915：初始截图 → 点击选项 → 对错反馈截图/断言 → 断言前进 1 题 → 截图 → 刷新续做断言 → 截图
+//   2b. 对错反馈：正确项绿色、选错项红色，约 600ms 后进入下一题（随机 + 确定性选错/选对各一次）
 //   3. 长题目（长题干 + 长选项）换行、无横向溢出、截图
 //   4. 防连点（同步双点不同选项 / 同步双点同一选项 / 间隔 50ms 双点）
 //   5. 页面 console 错误、外部 URL 检查
@@ -87,6 +88,22 @@ async function readState(page) {
   }, STORAGE_KEY);
 }
 
+// 读取当前选项的对错标记与进度文本（反馈期间使用）
+async function readFeedback(page) {
+  return page.evaluate(() => {
+    const buttons = [...document.querySelectorAll('#options button.option')];
+    return {
+      progress: document.getElementById('progress').textContent.trim(),
+      correct: buttons
+        .map((b, i) => (b.classList.contains('correct') ? i : -1))
+        .filter((i) => i >= 0),
+      wrong: buttons
+        .map((b, i) => (b.classList.contains('wrong') ? i : -1))
+        .filter((i) => i >= 0),
+    };
+  });
+}
+
 const OPTION_SEL = '#options button.option';
 
 async function optionCount(page) {
@@ -94,8 +111,8 @@ async function optionCount(page) {
 }
 
 async function waitTransitionDone() {
-  // 点击后 150ms 淡出 + 换题 + 300ms 锁定；700ms 足够覆盖整个过渡
-  return 700;
+  // 点击后 600ms 对错反馈 + 150ms 淡出 + 换题 + 150ms 淡入；留余量取 1100ms
+  return 1100;
 }
 
 // ---- 长题目候选：在页面内基于 QUESTION_BANK 计算 ----
@@ -307,10 +324,30 @@ async function testViewport(browser, vp) {
   eq(`${tag}/shot-initial-size`, '初始截图尺寸', `${vp.width}x${vp.height}`,
     `${shotInit.width}x${shotInit.height}`);
 
-  // ---- 点击第一个选项 → 断言前进 1 题 ----
+  // ---- 点击第一个选项 → 对错反馈 → 断言前进 1 题 ----
   const qBefore = await page.$eval('#question', (el) => el.textContent);
+  const firstItem = await page.evaluate((key) => {
+    const st = JSON.parse(localStorage.getItem(key));
+    const item = window.QUESTION_BANK.find((x) => x.id === st.order[st.index]);
+    return { id: item.id, answer: item.answer };
+  }, STORAGE_KEY);
+
   await page.locator(OPTION_SEL).first().click();
-  await page.waitForTimeout(await waitTransitionDone());
+  await page.waitForTimeout(250);
+
+  const fb = await readFeedback(page);
+  const expectedCorrect = [firstItem.answer];
+  const expectedWrong = firstItem.answer === 0 ? [] : [0];
+  eq(`${tag}/feedback-progress`, '反馈期间仍停留在当前题', progress0, fb.progress);
+  eq(`${tag}/feedback-correct-marked`, '反馈：正确项被标记为绿色（.correct）',
+    JSON.stringify(expectedCorrect), JSON.stringify(fb.correct));
+  eq(`${tag}/feedback-wrong-marked`, '反馈：选错时选中项被标记为红色（.wrong）',
+    JSON.stringify(expectedWrong), JSON.stringify(fb.wrong));
+  const shotFeedback = await screenshot(page, `${tag}-feedback.png`, tag);
+  eq(`${tag}/shot-feedback-size`, '反馈截图尺寸',
+    `${vp.width}x${vp.height}`, `${shotFeedback.width}x${shotFeedback.height}`);
+
+  await page.waitForTimeout(900); // 等反馈 + 淡出 + 换题 + 淡入完成
 
   const progress1 = await readProgress(page);
   eq(`${tag}/after-answer-progress`, '点击选项后进度前进 1 题', '第 2 / 485 题', progress1);
@@ -364,6 +401,50 @@ async function testViewport(browser, vp) {
   const shotResume = await screenshot(page, `${tag}-resume.png`, tag);
   eq(`${tag}/shot-resume-size`, '续做截图尺寸',
     `${vp.width}x${vp.height}`, `${shotResume.width}x${shotResume.height}`);
+
+  // ---- 对错反馈（确定性：选错场景） ----
+  const wrongItem = await page.evaluate(() => {
+    const item = window.QUESTION_BANK.find((q) => q.answer !== 0);
+    return { id: item.id, answer: item.answer };
+  });
+  await injectState(page, wrongItem.id);
+  await page.locator(OPTION_SEL).first().click();
+  await page.waitForTimeout(250);
+  const fbWrong = await readFeedback(page);
+  eq(`${tag}/feedback-wrong-case-correct-marked`,
+    '确定性选错：正确项标绿', JSON.stringify([wrongItem.answer]),
+    JSON.stringify(fbWrong.correct));
+  eq(`${tag}/feedback-wrong-case-selected-marked`,
+    '确定性选错：选中项标红', JSON.stringify([0]),
+    JSON.stringify(fbWrong.wrong));
+  const shotFbWrong = await screenshot(page, `${tag}-feedback-wrong.png`, tag);
+  eq(`${tag}/shot-feedback-wrong-size`, '选错反馈截图尺寸',
+    `${vp.width}x${vp.height}`, `${shotFbWrong.width}x${shotFbWrong.height}`);
+  await page.waitForTimeout(900);
+  eq(`${tag}/feedback-wrong-case-next`, '反馈结束后进入下一题',
+    '第 2 / 485 题', await readProgress(page));
+
+  // ---- 对错反馈（确定性：选对场景） ----
+  const rightItem = await page.evaluate(() => {
+    const item = window.QUESTION_BANK.find((q) => q.answer === 0);
+    return { id: item.id };
+  });
+  await injectState(page, rightItem.id);
+  await page.locator(OPTION_SEL).first().click();
+  await page.waitForTimeout(250);
+  const fbRight = await readFeedback(page);
+  eq(`${tag}/feedback-right-case-correct-marked`,
+    '确定性选对：选中项标绿', JSON.stringify([0]),
+    JSON.stringify(fbRight.correct));
+  eq(`${tag}/feedback-right-case-no-wrong`,
+    '确定性选对：没有红色标记', '[]',
+    JSON.stringify(fbRight.wrong));
+  const shotFbRight = await screenshot(page, `${tag}-feedback-correct.png`, tag);
+  eq(`${tag}/shot-feedback-correct-size`, '选对反馈截图尺寸',
+    `${vp.width}x${vp.height}`, `${shotFbRight.width}x${shotFbRight.height}`);
+  await page.waitForTimeout(900);
+  eq(`${tag}/feedback-right-case-next`, '反馈结束后进入下一题',
+    '第 2 / 485 题', await readProgress(page));
 
   // ---- 长题目 ----
   const cand = await findLongCandidates(page);
@@ -594,6 +675,11 @@ function writeReport({ browserVersion, pwVersion, gitHead, launchError, wwwHits 
     for (const h of wwwHits) lines.push(`- \`${h}\``);
   }
   lines.push('');
+  lines.push('## 答题对错反馈');
+  lines.push('');
+  lines.push('- 点击选项后先显示约 600ms 的对错反馈：正确项 `.correct`（绿）、选错时选中项 `.wrong`（红），随后淡出进入下一题；反馈期间不响应点击。');
+  lines.push('- 每视口截图包含：随机首题反馈、确定性「选错」、确定性「选对」三张，并校验 class 索引与期望答案一致。');
+  lines.push('');
   lines.push('## 长题目场景');
   lines.push('');
   lines.push('动态从 `window.QUESTION_BANK` 计算候选，并注入 localStorage（order[0]=目标题、index=0、answers=[]）后刷新：');
@@ -619,7 +705,7 @@ function writeReport({ browserVersion, pwVersion, gitHead, launchError, wwwHits 
   lines.push('## 未验证项 / 限制');
   lines.push('');
   lines.push('- 仅桌面无头 Chromium 的 file:// 环境，未覆盖真机 Android WebView 与 Capacitor SystemBars 注入的 safe-area（模拟器不可用）。');
-  lines.push('- 未验证 APK 包内 www 资源（由 android-builder 用 unzip/aapt 验证）。');
+  lines.push('- 未验证 APK 包内资源、Android 启动页与系统栏在真机上的实际渲染（包内资源由打包步骤用 unzip/aapt2 静态校验）。');
   lines.push('- 未验证屏幕阅读器/键盘可达性（仅通过 4 个选项按钮存在性推断键盘 A-D 路径存在）。');
   lines.push('- 未验证低端设备动画掉帧、真机触屏长按/双击缩放行为。');
   lines.push('- `@media (hover:hover)` 触屏分支无法在桌面无头 Chromium 中真实复现（依赖 isMobile/hasTouch 模拟）。');

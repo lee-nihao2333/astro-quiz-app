@@ -4,8 +4,8 @@
   // 本轮状态（轮次顺序 / 当前下标 / 作答记录）保存到 localStorage，用于断点续做
   const STORAGE_KEY = "astroQuizState.v1";
   const LETTERS = ["A", "B", "C", "D"];
-  const FADE_MS = 150;
-  const LOCK_MS = FADE_MS * 2; // 淡出 + 淡入期间不响应点击，防止连点连跳两题
+  const FEEDBACK_MS = 600; // 答完后显示对错的时间
+  const FADE_MS = 150; // 淡出 / 淡入各自的时长（反馈 + 淡出 + 淡入期间不响应点击）
 
   const bank = window.QUESTION_BANK;
   const $quiz = document.getElementById("quiz");
@@ -23,7 +23,8 @@
 
   let state = loadState() || createRound();
   let locked = false;
-  let fadeTimer = 0;
+  let feedbackTimer = 0;
+  let swapTimer = 0;
   let unlockTimer = 0;
 
   function shuffle(list) {
@@ -139,29 +140,46 @@
     });
   }
 
+  // 在选项上标出正确 / 错误：正确项绿色，选错时选中项红色
+  function showFeedback(answer, choice) {
+    const buttons = $options.querySelectorAll(".option");
+    buttons.forEach(function (button, index) {
+      if (index === answer) {
+        button.classList.add("correct");
+      } else if (index === choice) {
+        button.classList.add("wrong");
+      }
+    });
+  }
+
   function choose(choice) {
     if (locked) return;
     locked = true;
 
-    // 记录作答并立刻推进下标，这样即使切换动画期间退出应用，下次也能从下一题继续
-    state.answers.push({ id: state.order[state.index], choice: choice });
+    const item = currentQuestion();
+    // 记录作答并立刻推进下标，这样即使反馈/切换期间退出应用，下次也能从下一题继续
+    state.answers.push({ id: item.id, choice: choice });
     state.index += 1;
     if (state.index >= state.order.length) {
       state = createRound(); // 一轮做完，重新打乱开始下一轮
     }
     saveState();
 
-    // 约 150ms 淡出，换题后淡入；整个过程不响应点击
-    $quiz.classList.add("fade");
-    clearTimeout(fadeTimer);
-    fadeTimer = setTimeout(function () {
-      render();
-      $quiz.classList.remove("fade");
-      clearTimeout(unlockTimer);
-      unlockTimer = setTimeout(function () {
-        locked = false;
-      }, LOCK_MS);
-    }, FADE_MS);
+    // 先显示约 600ms 的对错反馈（正确项绿、选错项红），再淡出换下一题
+    showFeedback(item.answer, choice);
+    clearTimeout(feedbackTimer);
+    clearTimeout(swapTimer);
+    clearTimeout(unlockTimer);
+    feedbackTimer = setTimeout(function () {
+      $quiz.classList.add("fade"); // 150ms 淡出
+      swapTimer = setTimeout(function () {
+        render(); // 换下一题
+        $quiz.classList.remove("fade"); // 150ms 淡入
+        unlockTimer = setTimeout(function () {
+          locked = false;
+        }, FADE_MS);
+      }, FADE_MS);
+    }, FEEDBACK_MS);
   }
 
   // 桌面/外接键盘快捷作答（A/B/C/D 或 1/2/3/4），界面不展示任何额外文字

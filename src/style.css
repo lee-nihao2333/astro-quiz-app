@@ -178,6 +178,29 @@ body::before {
   }
 }
 
+/* 答题反馈：正确项绿色，选错时选中项红色（放在 hover 之后，反馈期间不被悬停样式覆盖） */
+.option.correct {
+  background: rgba(46, 160, 106, 0.22);
+  border-color: rgba(94, 220, 154, 0.95);
+  cursor: default;
+}
+
+.option.correct .letter {
+  background: rgba(94, 220, 154, 0.3);
+  color: #eafff2;
+}
+
+.option.wrong {
+  background: rgba(190, 60, 60, 0.22);
+  border-color: rgba(255, 120, 120, 0.95);
+  cursor: default;
+}
+
+.option.wrong .letter {
+  background: rgba(255, 120, 120, 0.3);
+  color: #ffecec;
+}
+
 .option-text {
   flex: 1;
   min-width: 0;
