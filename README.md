@@ -3,7 +3,7 @@
 一个纯前端（HTML / CSS / JavaScript）的天文知识竞赛刷题应用，使用 Capacitor 8 打包成离线 Android APK。
 
 - 题库：2009–2020 年共 12 个文件、485 道题
-- 交互：单页做题，点击选项后立刻进入下一题（约 150ms 淡出淡入），不显示对错
+- 交互：单页做题，点击选项后先显示约 0.6 秒对错反馈（正确项绿、选错项红），再进入下一题
 - 出题：全部题目混在一起随机打乱，一轮做完后重新打乱再来一轮
 - 续做：答题进度与作答记录保存在 `localStorage`，关闭应用再打开会从上次位置继续
 - 离线：所有资源都在本地，不引用 CDN、网络字体或任何外部 URL
@@ -139,10 +139,16 @@ adb install -r dist/astro-quiz-debug.apk
 - 作答时先落盘再播放换题动画，因此切题过程中退出也不会丢进度
 - 题库变更导致保存的题目 ID 失效时，会自动重新开始一轮
 
+### 答题对错反馈
+
+- 点击选项后先停留约 **600ms**：正确选项变绿；选错时选中项变红，同时正确项变绿。
+- 随后约 150ms 淡出、换下一题再淡入；反馈与切换期间不响应点击，快速连点不会连跳两题。
+- 不显示题目出处，也不显示「答案由 AI 给出」的提示。
+
 ### 手机适配要点
 
 - 触屏设备不启用 hover 效果（`@media (hover: hover)` 包裹），避免点完后同位置按钮一直高亮
-- 切题动画约 300ms 内锁定点击，快速连点不会连跳两题
+- 反馈 + 切题动画约 900ms 内锁定点击，快速连点不会连跳两题
 - `user-scalable=no` + `touch-action: pan-x pan-y` 禁止双指/双击缩放；禁用长按选中和点击高亮闪烁
 - 使用 `viewport-fit=cover` + `env(safe-area-inset-*)` / Capacitor 8 SystemBars 注入的 `--safe-area-inset-*` 适配刘海和底部手势条
 - Android 15+ 强制全面屏（edge-to-edge）：原生 `MainActivity` 调用 `EdgeToEdge.enable(...)`，`capacitor.config.json` 配置 `SystemBars.insetsHandling: "css"` 与深色样式；系统栏、导航栏、启动页背景均为深色 `#0b0f1e`
@@ -154,6 +160,7 @@ adb install -r dist/astro-quiz-debug.apk
 
 - `assets/icon.png`：1024×1024 图标原图
 - `assets/splash.png`：2732×2732 启动页原图
+- `assets/splash-logo.png`：1024×1024 透明居中 logo，供 Android 启动页使用
 - 另有 `@capacitor/assets` 自定义模式所需的 `icon-only.png`、`icon-foreground.png`、`icon-background.png`、`splash-dark.png`
 
 重新生成 Android 各尺寸资源（需先有 `android/` 工程）：
@@ -163,15 +170,17 @@ python3 scripts/generate-assets.py
 npx @capacitor/assets generate --android
 ```
 
-会生成各密度 `mipmap-*/ic_launcher*.png`、自适应图标 XML（`mipmap-anydpi-v26/`）以及 `drawable*/splash.png`。
+第一条命令会生成 `assets/` 下的原图，并同步 `android/.../res/drawable-nodpi/splash_background.png` 与 `drawable-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/splash_logo.png`；第二条会生成各密度 `mipmap-*/ic_launcher*.png`、自适应图标 XML（`mipmap-anydpi-v26/`）以及 `drawable*/splash.png`。
+
+> 启动页不使用工具生成的 `drawable*/splash.png`：方形原图被拉到不同屏幕比例时圆形行星会被压扁。启动页改用 `res/drawable/launch_background.xml`（星空底图铺满 + 居中 logo 按原像素显示、不缩放）；Android 12+ 的系统启动画面也使用同一个 `splash_logo`，因此在任何屏幕比例下主体都不会变形。
 
 ## 验收与测试
 
 `qa/` 下有本机 Chromium + Playwright 的验收脚本、报告和截图：
 
 - `qa/verify.mjs`：用 file:// 打开 `www/index.html`，在 360×640、412×915 两个视口下验证布局、换题、断点续做、防连点、长题换行、无横向溢出、无 console 错误等
-- `qa/report.md`：99 条断言结果与截图清单
-- `qa/*.png`：两个视口各 6 张截图（initial / after-answer / resume / long-question / long-stem / double-click）
+- `qa/report.md`：断言结果与截图清单
+- `qa/*.png`：两个视口各 9 张截图（initial / feedback / feedback-wrong / feedback-correct / after-answer / resume / long-question / long-stem / double-click）
 
 运行脚本需要本机已有 playwright-core 与 Chromium（脚本里使用了本机路径，仅用于开发验收，不是应用运行依赖）：
 
@@ -181,9 +190,8 @@ node qa/verify.mjs
 
 ## 未实现的功能
 
-当前只做题目中勾选的最小版本；以下可选功能均未实现：
+以下可选功能未实现：
 
-- 答题后显示对错、正确答案高亮
 - 题目出处、AI 答案提示
 - 按年份选题、错题重练、统计正确率
 
