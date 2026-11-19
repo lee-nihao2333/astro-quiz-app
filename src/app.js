@@ -15,12 +15,16 @@
   const $quiz = document.getElementById("quiz");
   const $question = document.getElementById("question");
   const $options = document.getElementById("options");
+  const $explain = document.getElementById("explain");
+  const $explainText = document.getElementById("explainText");
+  const $explainHint = document.getElementById("explainHint");
 
   let S = null; // window.AstroSelector（selector.js 加载后才有）
   let bank = null;
   let byId = null;
   let state = null;
   let locked = false;
+  let awaitingContinue = false; // 答错后展示解析，等待用户轻触继续
   let feedbackTimer = 0;
   let swapTimer = 0;
   let unlockTimer = 0;
@@ -71,6 +75,9 @@
       }
       if (typeof item.ai !== "boolean") {
         return where + " ai 必须是 boolean";
+      }
+      if (typeof item.explain !== "string" || item.explain.trim() === "") {
+        return where + " explain 必须是非空字符串（答错时展示的解析）";
       }
     }
     return null;
@@ -309,6 +316,7 @@
       showLoadFailure("当前题目 id 不在题库中：" + String(state.currentId));
       return;
     }
+    hideExplanation();
     $question.textContent = item.q;
 
     $options.textContent = "";
@@ -345,6 +353,64 @@
     });
   }
 
+  // 解析文本来自 data 的 explain，只含少量 **加粗** 标记；
+  // 用 textContent 逐段构建，避免把数据当 HTML 注入。
+  function setExplanation(text) {
+    $explainText.textContent = "";
+    String(text || "").split("**").forEach(function (part, index) {
+      if (index % 2 === 1) {
+        const strong = document.createElement("strong");
+        strong.textContent = part;
+        $explainText.appendChild(strong);
+      } else {
+        $explainText.appendChild(document.createTextNode(part));
+      }
+    });
+    $explain.hidden = false;
+    $explainHint.hidden = true;
+    requestAnimationFrame(function () {
+      $explain.scrollIntoView({ block: "nearest" });
+    });
+  }
+
+  function hideExplanation() {
+    if (!$explain) return;
+    $explain.hidden = true;
+    $explainText.textContent = "";
+    $explainHint.hidden = true;
+  }
+
+  // 淡出 → 渲染下一题 → 淡入 → 解锁
+  function goToNext() {
+    clearTimeout(swapTimer);
+    clearTimeout(unlockTimer);
+    $quiz.classList.add("fade");
+    swapTimer = setTimeout(function () {
+      render(); // 自适应算法选出的下一题
+      $quiz.classList.remove("fade");
+      unlockTimer = setTimeout(function () {
+        locked = false;
+      }, FADE_MS);
+    }, FADE_MS);
+  }
+
+  // 答错并展示解析后，轻触/按键继续（由用户控制阅读时间）
+  function continueAfterExplanation(event) {
+    if (!awaitingContinue) return;
+    if (event) {
+      if (
+        event.type === "keydown" &&
+        (event.repeat || event.ctrlKey || event.metaKey || event.altKey)
+      ) {
+        return;
+      }
+      if (event.cancelable) event.preventDefault();
+    }
+    awaitingContinue = false;
+    clearTimeout(feedbackTimer);
+    goToNext();
+  }
+
   function choose(choice) {
     if (locked || !state) return;
     locked = true;
@@ -364,25 +430,30 @@
     // 先落盘（含下一题 currentId），反馈 / 切换期间退出也不会丢进度
     saveState();
 
-    // 先显示约 600ms 的对错反馈，再淡出换下一题
+    // 先显示约 600ms 的对错反馈：
+    // 答对 → 自动切下一题；答错 → 展开解析，等待用户轻触继续。
     showFeedback(item.answer, choice);
     clearTimeout(feedbackTimer);
     clearTimeout(swapTimer);
     clearTimeout(unlockTimer);
-    feedbackTimer = setTimeout(function () {
-      $quiz.classList.add("fade"); // 150ms 淡出
-      swapTimer = setTimeout(function () {
-        render(); // 自适应算法选出的下一题
-        $quiz.classList.remove("fade"); // 150ms 淡入
-        unlockTimer = setTimeout(function () {
-          locked = false;
-        }, FADE_MS);
-      }, FADE_MS);
-    }, FEEDBACK_MS);
+    if (ok) {
+      feedbackTimer = setTimeout(goToNext, FEEDBACK_MS);
+    } else {
+      setExplanation(item.explain);
+      feedbackTimer = setTimeout(function () {
+        $explainHint.hidden = false;
+        awaitingContinue = true;
+      }, FEEDBACK_MS);
+    }
   }
+
+  // 解析展示期间：点击任意处 / 按任意键继续（捕获阶段先于作答快捷键）
+  document.addEventListener("pointerdown", continueAfterExplanation, true);
+  document.addEventListener("keydown", continueAfterExplanation, true);
 
   // 桌面/外接键盘快捷作答（A/B/C/D 或 1/2/3/4），界面不展示任何额外文字
   document.addEventListener("keydown", function (event) {
+    if (awaitingContinue) return;
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
     const key = String(event.key || "").toUpperCase();
     let choice = LETTERS.indexOf(key);

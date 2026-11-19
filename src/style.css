@@ -199,6 +199,32 @@ body::before {
   border-radius: 50%;
 }
 
+/* 答错后的解析：选项下方展开，轻触继续 */
+.explain {
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: rgba(124, 156, 255, 0.09);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #c9d3ec;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.explain strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.explain-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
 /* 小屏收紧一点间距，保证 360×640 能完整显示 */
 @media (max-width: 380px) {
   .question {
@@ -210,5 +236,11 @@ body::before {
     gap: 12px;
     padding: 14px;
     font-size: 16px;
+  }
+
+  .explain {
+    margin-top: 14px;
+    padding: 12px 14px;
+    font-size: 14px;
   }
 }
