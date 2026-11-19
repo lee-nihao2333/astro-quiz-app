@@ -1,11 +1,11 @@
 # Web 端验收报告（qa/verify.mjs）
 
-- 生成时间：2026-11-19T13:15:39.222Z
+- 生成时间：2026-11-19T14:03:06.073Z
 - 被测页面：`/home/marvin/astro-quiz-app/www/index.html`（file:// 打开，未启动服务器）
 - 浏览器：Chromium 156.0.8078.4（playwright-core 1.64.1）
 - 视口：360×640、412×915（deviceScaleFactor=1，isMobile+hasTouch）
-- git HEAD：d1aed3d
-- 结论：**全部通过**（共 257 条断言，通过 257）
+- git HEAD：0c17bde
+- 结论：**全部通过**（共 336 条断言，通过 336）
 
 ## 断言明细
 
@@ -14,283 +14,364 @@
 | 1 | global/www-no-external-url | www/ 内无任何 http(s) 外部 URL | 0 处 | 0 处 | PASS |
 | 2 | global/www-index-exists | www/index.html 存在 | true | true | PASS |
 | 3 | global/www-questions-exists | www/questions.js 存在 | true | true | PASS |
-| 4 | 360x640/bank-length | window.QUESTION_BANK.length | 485 | 485 | PASS |
-| 5 | 360x640/selector-config | window.AstroSelector.CONFIG 可读，box 上限 = intervalsDays.length - 1 | true | intervalsDays=[0,1,3,7,21,60], maxBox=5, logLimit=500 | PASS |
-| 6 | 360x640/no-progress-text | 没有题号进度文字（#progress） | true | #progress=false | PASS |
-| 7 | 360x640/no-progress-bar | 没有进度条（.bar） | true | .bar=false | PASS |
-| 8 | 360x640/question-nonempty | 题目文字非空（动态加载 selector 后已初始化） | true | 满月不可能发生在农历哪天？ | PASS |
-| 9 | 360x640/question-type-text | 题目下方灰色小字显示当前题目类别 | 类别：天象与时间历法 | 类别：天象与时间历法 | PASS |
-| 10 | 360x640/question-type-small-gray | 类别小字：字号 ≤ 14px 且为灰色系 | true | fontSize=12px, color=rgb(138, 147, 178) | PASS |
-| 11 | 360x640/option-count | 选项按钮数量 | 4 | 4 | PASS |
-| 12 | 360x640/option-letters | 选项字母 A B C D | A,B,C,D | A,B,C,D | PASS |
-| 13 | 360x640/option-text-nonempty | 4 个选项文字均非空 | true | ["十五","十六","十七","以上皆可能发生满月"] | PASS |
-| 14 | 360x640/state-initial-v3 | 初始 localStorage v3 合法（currentId 在题库、step=0、q/log 为空） | true | currentId=2020-19, step=0, q=0, log=0 | PASS |
-| 15 | 360x640/initial-no-h-overflow | 初始界面无横向溢出 | true | scrollWidth=360, innerWidth=360, overflow=0px | PASS |
-| 16 | 360x640/shot-initial-size | 初始截图尺寸 | 360x640 | 360x640 | PASS |
-| 17 | 360x640/feedback-progress | 反馈期间仍停留在当前题（600ms 反馈，未提前切题） | 满月不可能发生在农历哪天？ | 满月不可能发生在农历哪天？ | PASS |
-| 18 | 360x640/feedback-correct-marked | 反馈：正确项被标记为绿色（.correct） | [3] | [3] | PASS |
-| 19 | 360x640/feedback-wrong-marked | 反馈：答对时没有红色标记（.wrong） | [] | [] | PASS |
-| 20 | 360x640/feedback-correct-no-explanation | 答对时不显示解析面板 | true | hidden=true | PASS |
-| 21 | 360x640/shot-feedback-size | 反馈截图尺寸 | 360x640 | 360x640 | PASS |
-| 22 | 360x640/natural-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
-| 23 | 360x640/natural-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2011-17 | PASS |
-| 24 | 360x640/natural-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795353280969} | PASS |
-| 25 | 360x640/natural-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2020-19","type":"天象与时间历法","ok":true,"step":1} | PASS |
-| 26 | 360x640/after-answer-question-changed | 约 600ms 反馈 + 淡出后切换到 v3.currentId 对应的新题 | true | 从地球上观测，下列哪个天体不可能出现在黄道附近？ | PASS |
-| 27 | 360x640/after-answer-option-count | 换题后选项按钮数量 | 4 | 4 | PASS |
-| 28 | 360x640/after-answer-fade-cleared | 淡入淡出结束（fade class 移除） | true | fade=false | PASS |
-| 29 | 360x640/after-answer-still-no-progress | 切题后仍然没有进度 UI | true | progress=false, bar=false | PASS |
-| 30 | 360x640/question-type-updated | 切题后类别小字同步更新为新题类型 | 类别：天象与时间历法 | 类别：天象与时间历法 | PASS |
-| 31 | 360x640/shot-after-answer-size | 作答后截图尺寸 | 360x640 | 360x640 | PASS |
-| 32 | 360x640/resume-question | 刷新后恢复到同一道题 | 从地球上观测，下列哪个天体不可能出现在黄道附近？ | 从地球上观测，下列哪个天体不可能出现在黄道附近？ | PASS |
-| 33 | 360x640/resume-state | 刷新后 v3 currentId/step/log 不丢 | true | currentId=2011-17, step=1, log=1 | PASS |
-| 34 | 360x640/resume-no-h-overflow | 刷新后无横向溢出 | true | overflow=0px | PASS |
-| 35 | 360x640/resume-option-count | 刷新后选项按钮数量 | 4 | 4 | PASS |
-| 36 | 360x640/shot-resume-size | 续做截图尺寸 | 360x640 | 360x640 | PASS |
-| 37 | 360x640/feedback-wrong-case-correct-marked | 确定性选错：正确项标绿 | [2] | [2] | PASS |
-| 38 | 360x640/feedback-wrong-case-selected-marked | 确定性选错：选中项标红 | [0] | [0] | PASS |
-| 39 | 360x640/feedback-wrong-case-green | 确定性选错：正确项边框为绿色系（计算样式） | true | rgba(94, 220, 154, 0.95) | PASS |
-| 40 | 360x640/feedback-wrong-case-red | 确定性选错：选中项边框为红色系（计算样式） | true | rgba(255, 120, 120, 0.95) | PASS |
-| 41 | 360x640/explain-visible-wrong | 答错后显示解析面板（#explain） | true | hidden=false | PASS |
-| 42 | 360x640/explain-text | 解析文本与题库 explain 一致（去掉 ** 标记） | 1609年伽利略把望远镜指向天空观测天体，2009年国际天文年正是纪念望远镜用于天文观测400周年，故选 C。 | 1609年伽利略把望远镜指向天空观测天体，2009年国际天文年正是纪念望远镜用于天文观测400周年，故选 C。 | PASS |
-| 43 | 360x640/explain-bold | 解析中的 **加粗** 渲染为 <strong> | ["C"] | ["C"] | PASS |
-| 44 | 360x640/explain-hint-hidden-initially | 600ms 反馈期间暂不显示“轻触继续” | true | hintHidden=true | PASS |
-| 45 | 360x640/wrong-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
-| 46 | 360x640/wrong-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2015-9 | PASS |
-| 47 | 360x640/wrong-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":1,"box":0,"lastStep":1,"due":0} | PASS |
-| 48 | 360x640/wrong-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-1","type":"天文史、人物与综合常识","ok":false,"step":1} | PASS |
-| 49 | 360x640/explain-hint-visible | 反馈结束后显示“轻触继续”提示 | true | hintHidden=false | PASS |
-| 50 | 360x640/explain-no-auto-advance | 答错后不自动切题，等待用户阅读解析 | true | questionChanged=false | PASS |
-| 51 | 360x640/shot-feedback-wrong-size | 选错解析截图尺寸 | 360x640 | 360x640 | PASS |
-| 52 | 360x640/feedback-wrong-case-next | 轻触继续后进入下一题，v3.currentId 与页面一致 | true | next=2015-9 | PASS |
-| 53 | 360x640/explain-hidden-after-next | 切题后解析面板隐藏 | true | hidden=true | PASS |
-| 54 | 360x640/feedback-right-case-correct-marked | 确定性选对：选中项标绿 | [0] | [0] | PASS |
-| 55 | 360x640/feedback-right-case-no-wrong | 确定性选对：没有红色标记 | [] | [] | PASS |
-| 56 | 360x640/feedback-right-case-green | 确定性选对：正确项边框为绿色系（计算样式） | true | rgba(94, 220, 154, 0.95) | PASS |
-| 57 | 360x640/feedback-right-case-no-explanation | 确定性选对：不显示解析面板 | true | hidden=true | PASS |
-| 58 | 360x640/shot-feedback-correct-size | 选对反馈截图尺寸 | 360x640 | 360x640 | PASS |
-| 59 | 360x640/right-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
-| 60 | 360x640/right-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2010-33 | PASS |
-| 61 | 360x640/right-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795353283385} | PASS |
-| 62 | 360x640/right-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-2","type":"天象与时间历法","ok":true,"step":1} | PASS |
-| 63 | 360x640/feedback-right-case-next | 选对反馈结束后进入下一题，v3.currentId 与页面一致 | true | next=2010-33 | PASS |
-| 64 | 360x640/long-opt-question | 长题场景定位到目标题 | 2019 年和 2020 年诺贝尔物理学奖都颁发给了天文学家，或者在天文学研究领域做出重要贡献的科学家。以下哪项是错的？ | 2019 年和 2020 年诺贝尔物理学奖都颁发给了天文学家，或者在天文学研究领域做出重要贡献的科学家。以下哪项是错的？ | PASS |
-| 65 | 360x640/long-opt-h-overflow | 长题（题干+选项最长）文档无横向溢出 | true | scrollWidth=360, innerWidth=360, overflow=0px | PASS |
-| 66 | 360x640/long-opt-question-wrap | 长题题干发生换行（行数 ≥ 2） | true | lines=4 (byHeight=4, byRange=4) | PASS |
-| 67 | 360x640/long-opt-option-wrap | 长选项文字发生换行（≥1 个选项行数 ≥ 2） | true | 换行选项数=4, 各选项行数=[6,6,5,5] | PASS |
-| 68 | 360x640/long-opt-option-no-overflow | 选项文字无横向溢出（scrollWidth ≤ clientWidth） | true | 各选项溢出=[0,0,0,0] | PASS |
-| 69 | 360x640/long-opt-option-count | 长题选项按钮数量 | 4 | 4 | PASS |
-| 70 | 360x640/shot-long-size | 长题截图尺寸 | 360x640 | 360x640 | PASS |
-| 71 | 360x640/long-stem-question | 最长题干场景定位到目标题 | 2017年8月22日和25日，世界上最大的单体射电望远镜FAST发现了两颗脉冲星：一颗编号J1859-0131，自转周期为1.83秒，据估算距离地球1.6万光年；一颗编号J1931-01，自转周期0.59秒，据估算距离地球约4100光年。请问FAST的直径和所在地区： | 2017年8月22日和25日，世界上最大的单体射电望远镜FAST发现了两颗脉冲星：一颗编号J1859-0131，自转周期为1.83秒，据估算距离地球1.6万光年；一颗编号J1931-01，自转周期0.59秒，据估算距离地球约4100光年。请问FAST的直径和所在地区： | PASS |
-| 72 | 360x640/long-stem-h-overflow | 最长题干无横向溢出 | true | overflow=0px | PASS |
-| 73 | 360x640/long-stem-wrap | 最长题干发生换行（行数 ≥ 3） | true | lines=8 | PASS |
-| 74 | 360x640/shot-long-stem-size | 最长题干截图尺寸 | true | 360x640 | PASS |
-| 75 | 360x640/tallest-1-top-reachable | 内容最多题 2020-29 顶部未被裁切（quizTop ≥ 0） | true | quizTop=0.0, scrollHeight=889, innerHeight=640 | PASS |
-| 76 | 360x640/tallest-1-bottom-reachable | 内容最多题 2020-29 滚动到底后末选项可见（可达） | true | maxScroll=249, lastOptionBottom=616.1, innerHeight=640 | PASS |
-| 77 | 360x640/tallest-2-top-reachable | 内容最多题 2017-21 顶部未被裁切（quizTop ≥ 0） | true | quizTop=30.5, scrollHeight=640, innerHeight=640 | PASS |
-| 78 | 360x640/tallest-2-bottom-reachable | 内容最多题 2017-21 滚动到底后末选项可见（可达） | true | maxScroll=0, lastOptionBottom=609.5, innerHeight=640 | PASS |
-| 79 | 360x640/tallest-3-top-reachable | 内容最多题 2017-37 顶部未被裁切（quizTop ≥ 0） | true | quizTop=46.5, scrollHeight=640, innerHeight=640 | PASS |
-| 80 | 360x640/tallest-3-bottom-reachable | 内容最多题 2017-37 滚动到底后末选项可见（可达） | true | maxScroll=0, lastOptionBottom=593.5, innerHeight=640 | PASS |
-| 81 | 360x640/recent-exclude-completed | 连续作答 12 题全部完成并切题 | true | 12/12 | PASS |
-| 82 | 360x640/recent-step | 连续作答后 v3.step 与 log 长度一致（12） | {"step":12,"log":12} | {"step":12,"log":12} | PASS |
-| 83 | 360x640/recent-adjacent-no-repeat | 连续作答的相邻题目不重复 | [] | [] | PASS |
-| 84 | 360x640/recent-10-exclusion | 每道新题都不在之前最近 10 题中（含当前题） | true | 最近 10 题均无重复 | PASS |
-| 85 | 360x640/recent-current-valid | 连续作答后当前题仍是题库中的有效题 | true | currentId=2013-6 | PASS |
-| 86 | 360x640/double-click-different-step | 同步连点两个不同选项只前进 1 题 | 1 | 1 | PASS |
-| 87 | 360x640/double-click-different-log | 同步连点不同选项只记录 1 条作答（第一次点击的题） | 1 | 1 | PASS |
-| 88 | 360x640/double-click-different-current | 同步连点只出一次下一题（currentId 变化） | true | true | PASS |
-| 89 | 360x640/double-click-same-step | 同步连点同一选项两次只前进 1 题 | 2 | 2 | PASS |
-| 90 | 360x640/double-click-same-current | 同步连点同一选项只出一次下一题 | true | true | PASS |
-| 91 | 360x640/double-click-50ms-step | 间隔 50ms 连点两次只前进 1 题 | 3 | 3 | PASS |
-| 92 | 360x640/double-click-50ms-current | 间隔 50ms 连点只出一次下一题 | true | true | PASS |
-| 93 | 360x640/shot-double-click-size | 防连点截图尺寸 | true | 360x640 | PASS |
-| 94 | 360x640/keyboard-a-feedback | 键盘 A 键选择第 1 项（正确）并显示绿色反馈 | {"correct":[0],"wrong":[]} | {"correct":[0],"wrong":[]} | PASS |
-| 95 | 360x640/keyboard-a-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
-| 96 | 360x640/keyboard-a-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2017-42 | PASS |
-| 97 | 360x640/keyboard-a-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795353299687} | PASS |
-| 98 | 360x640/keyboard-a-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-2","type":"天象与时间历法","ok":true,"step":1} | PASS |
-| 99 | 360x640/keyboard-a-next | 键盘 A 键答对后自动切题 | true | 已切题 | PASS |
-| 100 | 360x640/keyboard-2-feedback | 键盘 2 键选择第 2 项（正确）并显示绿色反馈 | {"correct":[1],"wrong":[]} | {"correct":[1],"wrong":[]} | PASS |
-| 101 | 360x640/keyboard-2-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
-| 102 | 360x640/keyboard-2-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2016-3 | PASS |
-| 103 | 360x640/keyboard-2-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795353300670} | PASS |
-| 104 | 360x640/keyboard-2-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-4","type":"太阳系与月球","ok":true,"step":1} | PASS |
-| 105 | 360x640/keyboard-2-next | 数字键 2 答对后自动切题 | true | 已切题 | PASS |
-| 106 | 360x640/v2-migration-step | v2 迁移后 v3.step = v2.answers.length | 3 | 3 | PASS |
-| 107 | 360x640/v2-migration-currentId | v2 迁移后 v3.currentId = v2.currentId | 2009-3 | 2009-3 | PASS |
-| 108 | 360x640/v2-migration-q | v2 迁移后 v3.q 正确（seen/wrong/box/lastStep/due） | true | 全部匹配 | PASS |
-| 109 | 360x640/v2-migration-log | v2 迁移后 v3.log 按 v2.answers 顺序与 step 正确 | true | 全部匹配 | PASS |
-| 110 | 360x640/v2-key-preserved | v2 迁移后 astroQuizState.v2 原样保留 | 115 字节 | 115 字节 | PASS |
-| 111 | 360x640/v2-migration-question | v2 迁移后展示 v2.currentId 对应题目 | 光年是天文学中的 | 光年是天文学中的 | PASS |
-| 112 | 360x640/v1-migration-step | v1 迁移后 v3.step = v1.answers.length | 2 | 2 | PASS |
-| 113 | 360x640/v1-migration-currentId | v1 迁移后 v3.currentId = order[index] | 2009-6 | 2009-6 | PASS |
-| 114 | 360x640/v1-migration-q | v1 迁移后 v3.q 正确（seen/wrong/box/lastStep/due） | true | 全部匹配 | PASS |
-| 115 | 360x640/v1-migration-log | v1 迁移后 v3.log 按 v1.answers 顺序与 step 正确 | true | 全部匹配 | PASS |
-| 116 | 360x640/v1-key-preserved | v1 迁移后 astroQuizState.v1 原样保留 | 4839 字节 | 4839 字节 | PASS |
-| 117 | 360x640/v1-migration-question | v1 迁移后展示 order[index] 对应题目 | 除太阳以外，全天最亮的恒星是 | 除太阳以外，全天最亮的恒星是 | PASS |
-| 118 | 360x640/v3-invalid-fallback-state | v3 含题库外 id 时整份判非法并回退为空 v3（step=0、q/log 空、currentId 合法） | true | currentId=2011-2, step=0, q=0, log=0 | PASS |
-| 119 | 360x640/v3-invalid-fallback-question | 回退后页面仍展示有效题目（未显示题库加载失败） | true | 冲日指的是某颗地外行星、地球、太阳排成一条直线，此时这颗地外行星离地球最近，最适 | PASS |
-| 120 | 360x640/v3-invalid-valid-currentid-q-fallback | v3.currentId 合法但 q key / log id 含题库外 id → 判非法并回退为空 v3（页面仍出题） | true | currentId=2009-2, step=0, q=0, log=0 | PASS |
-| 121 | 360x640/v3-invalid-valid-currentid-q-question | 非法 v3（currentId 合法）回退后页面展示有效题目，未显示题库加载失败 | true | 2009年7月22日，在北京可以观测到 | PASS |
-| 122 | 360x640/v3-invalid-valid-currentid-v2-migration | v3（currentId 合法、log id 非法）判非法后按合法 v2 迁移到 v3 | true | step/q/log 与 v2 一致 | PASS |
-| 123 | 360x640/v3-invalid-v2-key-preserved | v3 非法时按 v2 迁移后 astroQuizState.v2 原样保留 | 91 字节 | 91 字节 | PASS |
-| 124 | 360x640/v3-invalid-v2-migration-question | v3 非法 → v2 迁移后展示 v2.currentId 对应题目 | 狮子座流星雨每年出现在 | 狮子座流星雨每年出现在 | PASS |
-| 125 | 360x640/v3-invalid-valid-currentid-v1-migration | v3（currentId 合法、q key 非法）判非法后按合法 v1 迁移到 v3 | true | step/q/log 与 v1 一致 | PASS |
-| 126 | 360x640/v3-invalid-v1-key-preserved | v3 非法时按 v1 迁移后 astroQuizState.v1 原样保留 | 4842 字节 | 4842 字节 | PASS |
-| 127 | 360x640/v3-invalid-v1-migration-question | v3 非法 → v1 迁移后展示 order[index] 对应题目 | 金牛座中有一个著名的“七姐妹星团”，指的是 | 金牛座中有一个著名的“七姐妹星团”，指的是 | PASS |
-| 128 | 360x640/no-console-errors | 页面无 console error / warning / pageerror / 请求失败 | true | "0 条" | PASS |
-| 129 | 412x915/bank-length | window.QUESTION_BANK.length | 485 | 485 | PASS |
-| 130 | 412x915/selector-config | window.AstroSelector.CONFIG 可读，box 上限 = intervalsDays.length - 1 | true | intervalsDays=[0,1,3,7,21,60], maxBox=5, logLimit=500 | PASS |
-| 131 | 412x915/no-progress-text | 没有题号进度文字（#progress） | true | #progress=false | PASS |
-| 132 | 412x915/no-progress-bar | 没有进度条（.bar） | true | .bar=false | PASS |
-| 133 | 412x915/question-nonempty | 题目文字非空（动态加载 selector 后已初始化） | true | 2016 年 3 月 9 日会有一次日全食，中国南方可见偏食，请问下列哪个城市能 | PASS |
-| 134 | 412x915/question-type-text | 题目下方灰色小字显示当前题目类别 | 类别：天象与时间历法 | 类别：天象与时间历法 | PASS |
-| 135 | 412x915/question-type-small-gray | 类别小字：字号 ≤ 14px 且为灰色系 | true | fontSize=13px, color=rgb(138, 147, 178) | PASS |
-| 136 | 412x915/option-count | 选项按钮数量 | 4 | 4 | PASS |
-| 137 | 412x915/option-letters | 选项字母 A B C D | A,B,C,D | A,B,C,D | PASS |
-| 138 | 412x915/option-text-nonempty | 4 个选项文字均非空 | true | ["昆明","广州","贵州","上海"] | PASS |
-| 139 | 412x915/state-initial-v3 | 初始 localStorage v3 合法（currentId 在题库、step=0、q/log 为空） | true | currentId=2015-43, step=0, q=0, log=0 | PASS |
-| 140 | 412x915/initial-no-h-overflow | 初始界面无横向溢出 | true | scrollWidth=412, innerWidth=412, overflow=0px | PASS |
-| 141 | 412x915/shot-initial-size | 初始截图尺寸 | 412x915 | 412x915 | PASS |
-| 142 | 412x915/feedback-progress | 反馈期间仍停留在当前题（600ms 反馈，未提前切题） | 2016 年 3 月 9 日会有一次日全食，中国南方可见偏食，请问下列哪个城市能最早看到日食开始？ | 2016 年 3 月 9 日会有一次日全食，中国南方可见偏食，请问下列哪个城市能最早看到日食开始？ | PASS |
-| 143 | 412x915/feedback-correct-marked | 反馈：正确项被标记为绿色（.correct） | [0] | [0] | PASS |
-| 144 | 412x915/feedback-wrong-marked | 反馈：答对时没有红色标记（.wrong） | [] | [] | PASS |
-| 145 | 412x915/feedback-correct-no-explanation | 答对时不显示解析面板 | true | hidden=true | PASS |
-| 146 | 412x915/shot-feedback-size | 反馈截图尺寸 | 412x915 | 412x915 | PASS |
-| 147 | 412x915/natural-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
-| 148 | 412x915/natural-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2019-29 | PASS |
-| 149 | 412x915/natural-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795353302167} | PASS |
-| 150 | 412x915/natural-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2015-43","type":"天象与时间历法","ok":true,"step":1} | PASS |
-| 151 | 412x915/after-answer-question-changed | 约 600ms 反馈 + 淡出后切换到 v3.currentId 对应的新题 | true | 南方的夜空中有两颗很亮的星，________位于人马座 | PASS |
-| 152 | 412x915/after-answer-option-count | 换题后选项按钮数量 | 4 | 4 | PASS |
-| 153 | 412x915/after-answer-fade-cleared | 淡入淡出结束（fade class 移除） | true | fade=false | PASS |
-| 154 | 412x915/after-answer-still-no-progress | 切题后仍然没有进度 UI | true | progress=false, bar=false | PASS |
-| 155 | 412x915/question-type-updated | 切题后类别小字同步更新为新题类型 | 类别：天象与时间历法 | 类别：天象与时间历法 | PASS |
-| 156 | 412x915/shot-after-answer-size | 作答后截图尺寸 | 412x915 | 412x915 | PASS |
-| 157 | 412x915/resume-question | 刷新后恢复到同一道题 | 南方的夜空中有两颗很亮的星，________位于人马座 | 南方的夜空中有两颗很亮的星，________位于人马座 | PASS |
-| 158 | 412x915/resume-state | 刷新后 v3 currentId/step/log 不丢 | true | currentId=2019-29, step=1, log=1 | PASS |
-| 159 | 412x915/resume-no-h-overflow | 刷新后无横向溢出 | true | overflow=0px | PASS |
-| 160 | 412x915/resume-option-count | 刷新后选项按钮数量 | 4 | 4 | PASS |
-| 161 | 412x915/shot-resume-size | 续做截图尺寸 | 412x915 | 412x915 | PASS |
-| 162 | 412x915/feedback-wrong-case-correct-marked | 确定性选错：正确项标绿 | [2] | [2] | PASS |
-| 163 | 412x915/feedback-wrong-case-selected-marked | 确定性选错：选中项标红 | [0] | [0] | PASS |
-| 164 | 412x915/feedback-wrong-case-green | 确定性选错：正确项边框为绿色系（计算样式） | true | rgba(94, 220, 154, 0.95) | PASS |
-| 165 | 412x915/feedback-wrong-case-red | 确定性选错：选中项边框为红色系（计算样式） | true | rgba(255, 120, 120, 0.95) | PASS |
-| 166 | 412x915/explain-visible-wrong | 答错后显示解析面板（#explain） | true | hidden=false | PASS |
-| 167 | 412x915/explain-text | 解析文本与题库 explain 一致（去掉 ** 标记） | 1609年伽利略把望远镜指向天空观测天体，2009年国际天文年正是纪念望远镜用于天文观测400周年，故选 C。 | 1609年伽利略把望远镜指向天空观测天体，2009年国际天文年正是纪念望远镜用于天文观测400周年，故选 C。 | PASS |
-| 168 | 412x915/explain-bold | 解析中的 **加粗** 渲染为 <strong> | ["C"] | ["C"] | PASS |
-| 169 | 412x915/explain-hint-hidden-initially | 600ms 反馈期间暂不显示“轻触继续” | true | hintHidden=true | PASS |
-| 170 | 412x915/wrong-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
-| 171 | 412x915/wrong-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2018-44 | PASS |
-| 172 | 412x915/wrong-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":1,"box":0,"lastStep":1,"due":0} | PASS |
-| 173 | 412x915/wrong-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-1","type":"天文史、人物与综合常识","ok":false,"step":1} | PASS |
-| 174 | 412x915/explain-hint-visible | 反馈结束后显示“轻触继续”提示 | true | hintHidden=false | PASS |
-| 175 | 412x915/explain-no-auto-advance | 答错后不自动切题，等待用户阅读解析 | true | questionChanged=false | PASS |
-| 176 | 412x915/shot-feedback-wrong-size | 选错解析截图尺寸 | 412x915 | 412x915 | PASS |
-| 177 | 412x915/feedback-wrong-case-next | 轻触继续后进入下一题，v3.currentId 与页面一致 | true | next=2018-44 | PASS |
-| 178 | 412x915/explain-hidden-after-next | 切题后解析面板隐藏 | true | hidden=true | PASS |
-| 179 | 412x915/feedback-right-case-correct-marked | 确定性选对：选中项标绿 | [0] | [0] | PASS |
-| 180 | 412x915/feedback-right-case-no-wrong | 确定性选对：没有红色标记 | [] | [] | PASS |
-| 181 | 412x915/feedback-right-case-green | 确定性选对：正确项边框为绿色系（计算样式） | true | rgba(94, 220, 154, 0.95) | PASS |
-| 182 | 412x915/feedback-right-case-no-explanation | 确定性选对：不显示解析面板 | true | hidden=true | PASS |
-| 183 | 412x915/shot-feedback-correct-size | 选对反馈截图尺寸 | 412x915 | 412x915 | PASS |
-| 184 | 412x915/right-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
-| 185 | 412x915/right-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2014-23 | PASS |
-| 186 | 412x915/right-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795353304649} | PASS |
-| 187 | 412x915/right-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-2","type":"天象与时间历法","ok":true,"step":1} | PASS |
-| 188 | 412x915/feedback-right-case-next | 选对反馈结束后进入下一题，v3.currentId 与页面一致 | true | next=2014-23 | PASS |
-| 189 | 412x915/long-opt-question | 长题场景定位到目标题 | 2019 年和 2020 年诺贝尔物理学奖都颁发给了天文学家，或者在天文学研究领域做出重要贡献的科学家。以下哪项是错的？ | 2019 年和 2020 年诺贝尔物理学奖都颁发给了天文学家，或者在天文学研究领域做出重要贡献的科学家。以下哪项是错的？ | PASS |
-| 190 | 412x915/long-opt-h-overflow | 长题（题干+选项最长）文档无横向溢出 | true | scrollWidth=412, innerWidth=412, overflow=0px | PASS |
-| 191 | 412x915/long-opt-question-wrap | 长题题干发生换行（行数 ≥ 2） | true | lines=4 (byHeight=4, byRange=4) | PASS |
-| 192 | 412x915/long-opt-option-wrap | 长选项文字发生换行（≥1 个选项行数 ≥ 2） | true | 换行选项数=4, 各选项行数=[5,5,4,4] | PASS |
-| 193 | 412x915/long-opt-option-no-overflow | 选项文字无横向溢出（scrollWidth ≤ clientWidth） | true | 各选项溢出=[0,0,0,0] | PASS |
-| 194 | 412x915/long-opt-option-count | 长题选项按钮数量 | 4 | 4 | PASS |
-| 195 | 412x915/shot-long-size | 长题截图尺寸 | 412x915 | 412x915 | PASS |
-| 196 | 412x915/long-stem-question | 最长题干场景定位到目标题 | 2017年8月22日和25日，世界上最大的单体射电望远镜FAST发现了两颗脉冲星：一颗编号J1859-0131，自转周期为1.83秒，据估算距离地球1.6万光年；一颗编号J1931-01，自转周期0.59秒，据估算距离地球约4100光年。请问FAST的直径和所在地区： | 2017年8月22日和25日，世界上最大的单体射电望远镜FAST发现了两颗脉冲星：一颗编号J1859-0131，自转周期为1.83秒，据估算距离地球1.6万光年；一颗编号J1931-01，自转周期0.59秒，据估算距离地球约4100光年。请问FAST的直径和所在地区： | PASS |
-| 197 | 412x915/long-stem-h-overflow | 最长题干无横向溢出 | true | overflow=0px | PASS |
-| 198 | 412x915/long-stem-wrap | 最长题干发生换行（行数 ≥ 3） | true | lines=7 | PASS |
-| 199 | 412x915/shot-long-stem-size | 最长题干截图尺寸 | true | 412x915 | PASS |
-| 200 | 412x915/tallest-1-top-reachable | 内容最多题 2020-29 顶部未被裁切（quizTop ≥ 0） | true | quizTop=51.9, scrollHeight=915, innerHeight=915 | PASS |
-| 201 | 412x915/tallest-1-bottom-reachable | 内容最多题 2020-29 滚动到底后末选项可见（可达） | true | maxScroll=0, lastOptionBottom=863.1, innerHeight=915 | PASS |
-| 202 | 412x915/tallest-2-top-reachable | 内容最多题 2017-21 顶部未被裁切（quizTop ≥ 0） | true | quizTop=160.8, scrollHeight=915, innerHeight=915 | PASS |
-| 203 | 412x915/tallest-2-bottom-reachable | 内容最多题 2017-21 滚动到底后末选项可见（可达） | true | maxScroll=0, lastOptionBottom=754.2, innerHeight=915 | PASS |
-| 204 | 412x915/tallest-3-top-reachable | 内容最多题 2017-37 顶部未被裁切（quizTop ≥ 0） | true | quizTop=178.4, scrollHeight=915, innerHeight=915 | PASS |
-| 205 | 412x915/tallest-3-bottom-reachable | 内容最多题 2017-37 滚动到底后末选项可见（可达） | true | maxScroll=0, lastOptionBottom=736.6, innerHeight=915 | PASS |
-| 206 | 412x915/recent-exclude-completed | 连续作答 12 题全部完成并切题 | true | 12/12 | PASS |
-| 207 | 412x915/recent-step | 连续作答后 v3.step 与 log 长度一致（12） | {"step":12,"log":12} | {"step":12,"log":12} | PASS |
-| 208 | 412x915/recent-adjacent-no-repeat | 连续作答的相邻题目不重复 | [] | [] | PASS |
-| 209 | 412x915/recent-10-exclusion | 每道新题都不在之前最近 10 题中（含当前题） | true | 最近 10 题均无重复 | PASS |
-| 210 | 412x915/recent-current-valid | 连续作答后当前题仍是题库中的有效题 | true | currentId=2019-12 | PASS |
-| 211 | 412x915/double-click-different-step | 同步连点两个不同选项只前进 1 题 | 1 | 1 | PASS |
-| 212 | 412x915/double-click-different-log | 同步连点不同选项只记录 1 条作答（第一次点击的题） | 1 | 1 | PASS |
-| 213 | 412x915/double-click-different-current | 同步连点只出一次下一题（currentId 变化） | true | true | PASS |
-| 214 | 412x915/double-click-same-step | 同步连点同一选项两次只前进 1 题 | 2 | 2 | PASS |
-| 215 | 412x915/double-click-same-current | 同步连点同一选项只出一次下一题 | true | true | PASS |
-| 216 | 412x915/double-click-50ms-step | 间隔 50ms 连点两次只前进 1 题 | 3 | 3 | PASS |
-| 217 | 412x915/double-click-50ms-current | 间隔 50ms 连点只出一次下一题 | true | true | PASS |
-| 218 | 412x915/shot-double-click-size | 防连点截图尺寸 | true | 412x915 | PASS |
-| 219 | 412x915/keyboard-a-feedback | 键盘 A 键选择第 1 项（正确）并显示绿色反馈 | {"correct":[0],"wrong":[]} | {"correct":[0],"wrong":[]} | PASS |
-| 220 | 412x915/keyboard-a-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
-| 221 | 412x915/keyboard-a-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2012-33 | PASS |
-| 222 | 412x915/keyboard-a-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795353321003} | PASS |
-| 223 | 412x915/keyboard-a-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-2","type":"天象与时间历法","ok":true,"step":1} | PASS |
-| 224 | 412x915/keyboard-a-next | 键盘 A 键答对后自动切题 | true | 已切题 | PASS |
-| 225 | 412x915/keyboard-2-feedback | 键盘 2 键选择第 2 项（正确）并显示绿色反馈 | {"correct":[1],"wrong":[]} | {"correct":[1],"wrong":[]} | PASS |
-| 226 | 412x915/keyboard-2-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
-| 227 | 412x915/keyboard-2-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2015-43 | PASS |
-| 228 | 412x915/keyboard-2-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795353321986} | PASS |
-| 229 | 412x915/keyboard-2-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-4","type":"太阳系与月球","ok":true,"step":1} | PASS |
-| 230 | 412x915/keyboard-2-next | 数字键 2 答对后自动切题 | true | 已切题 | PASS |
-| 231 | 412x915/v2-migration-step | v2 迁移后 v3.step = v2.answers.length | 3 | 3 | PASS |
-| 232 | 412x915/v2-migration-currentId | v2 迁移后 v3.currentId = v2.currentId | 2009-3 | 2009-3 | PASS |
-| 233 | 412x915/v2-migration-q | v2 迁移后 v3.q 正确（seen/wrong/box/lastStep/due） | true | 全部匹配 | PASS |
-| 234 | 412x915/v2-migration-log | v2 迁移后 v3.log 按 v2.answers 顺序与 step 正确 | true | 全部匹配 | PASS |
-| 235 | 412x915/v2-key-preserved | v2 迁移后 astroQuizState.v2 原样保留 | 115 字节 | 115 字节 | PASS |
-| 236 | 412x915/v2-migration-question | v2 迁移后展示 v2.currentId 对应题目 | 光年是天文学中的 | 光年是天文学中的 | PASS |
-| 237 | 412x915/v1-migration-step | v1 迁移后 v3.step = v1.answers.length | 2 | 2 | PASS |
-| 238 | 412x915/v1-migration-currentId | v1 迁移后 v3.currentId = order[index] | 2009-6 | 2009-6 | PASS |
-| 239 | 412x915/v1-migration-q | v1 迁移后 v3.q 正确（seen/wrong/box/lastStep/due） | true | 全部匹配 | PASS |
-| 240 | 412x915/v1-migration-log | v1 迁移后 v3.log 按 v1.answers 顺序与 step 正确 | true | 全部匹配 | PASS |
-| 241 | 412x915/v1-key-preserved | v1 迁移后 astroQuizState.v1 原样保留 | 4839 字节 | 4839 字节 | PASS |
-| 242 | 412x915/v1-migration-question | v1 迁移后展示 order[index] 对应题目 | 除太阳以外，全天最亮的恒星是 | 除太阳以外，全天最亮的恒星是 | PASS |
-| 243 | 412x915/v3-invalid-fallback-state | v3 含题库外 id 时整份判非法并回退为空 v3（step=0、q/log 空、currentId 合法） | true | currentId=2019-59, step=0, q=0, log=0 | PASS |
-| 244 | 412x915/v3-invalid-fallback-question | 回退后页面仍展示有效题目（未显示题库加载失败） | true | 北黄极的赤经和赤纬是？ | PASS |
-| 245 | 412x915/v3-invalid-valid-currentid-q-fallback | v3.currentId 合法但 q key / log id 含题库外 id → 判非法并回退为空 v3（页面仍出题） | true | currentId=2010-32, step=0, q=0, log=0 | PASS |
-| 246 | 412x915/v3-invalid-valid-currentid-q-question | 非法 v3（currentId 合法）回退后页面展示有效题目，未显示题库加载失败 | true | 以下哪一天，地球离太阳最近______。 | PASS |
-| 247 | 412x915/v3-invalid-valid-currentid-v2-migration | v3（currentId 合法、log id 非法）判非法后按合法 v2 迁移到 v3 | true | step/q/log 与 v2 一致 | PASS |
-| 248 | 412x915/v3-invalid-v2-key-preserved | v3 非法时按 v2 迁移后 astroQuizState.v2 原样保留 | 91 字节 | 91 字节 | PASS |
-| 249 | 412x915/v3-invalid-v2-migration-question | v3 非法 → v2 迁移后展示 v2.currentId 对应题目 | 狮子座流星雨每年出现在 | 狮子座流星雨每年出现在 | PASS |
-| 250 | 412x915/v3-invalid-valid-currentid-v1-migration | v3（currentId 合法、q key 非法）判非法后按合法 v1 迁移到 v3 | true | step/q/log 与 v1 一致 | PASS |
-| 251 | 412x915/v3-invalid-v1-key-preserved | v3 非法时按 v1 迁移后 astroQuizState.v1 原样保留 | 4842 字节 | 4842 字节 | PASS |
-| 252 | 412x915/v3-invalid-v1-migration-question | v3 非法 → v1 迁移后展示 order[index] 对应题目 | 金牛座中有一个著名的“七姐妹星团”，指的是 | 金牛座中有一个著名的“七姐妹星团”，指的是 | PASS |
-| 253 | 412x915/no-console-errors | 页面无 console error / warning / pageerror / 请求失败 | true | "0 条" | PASS |
-| 254 | cold-start/completed | 空状态连续作答 16 题全部完成并切题 | 16 | 16 | PASS |
-| 255 | cold-start/type-sequence | 冷启动类型序列 = TYPE_ORDER 每类 2 题（无到期复习时） | ["天象与时间历法","天象与时间历法","恒星与星座","恒星与星座","太阳系与月球","太阳系与月球","天文观测与望远镜","天文观测与望远镜","时事与新闻","时事与新闻","天文史、人物与综合常识","天文史、人物与综合常识","航天与空间探测","航天与空间探测","星系与宇宙","星系与宇宙"] | ["天象与时间历法","天象与时间历法","恒星与星座","恒星与星座","太阳系与月球","太阳系与月球","天文观测与望远镜","天文观测与望远镜","时事与新闻","时事与新闻","天文史、人物与综合常识","天文史、人物与综合常识","航天与空间探测","航天与空间探测","星系与宇宙","星系与宇宙"] | PASS |
-| 256 | cold-start/step | 冷启动 16 题后 v3.step | 16 | 16 | PASS |
-| 257 | cold-start/no-errors | 冷启动过程无 console error / warning / pageerror | true | 0 条 | PASS |
+| 4 | global/www-daily-exists | www/daily.js 存在（每日目标模块） | true | true | PASS |
+| 5 | 360x640/bank-length | window.QUESTION_BANK.length | 485 | 485 | PASS |
+| 6 | 360x640/selector-config | window.AstroSelector.CONFIG 可读，box 上限 = intervalsDays.length - 1 | true | intervalsDays=[0,1,3,7,21,60], maxBox=5, logLimit=500 | PASS |
+| 7 | 360x640/daily-visible-initial | 初始加载：每日目标进度条可见（#daily 未隐藏） | true | exists=true, hidden=false | PASS |
+| 8 | 360x640/daily-count-initial | 初始加载：#dailyCount 文本为 0 / 20 | 0 / 20 | 0 / 20 | PASS |
+| 9 | 360x640/daily-fill-initial | 初始加载：#dailyFill 宽度为 0 | true | fillWidth=0px | PASS |
+| 10 | 360x640/daily-aria-initial | 初始加载：#dailyTrack 的 aria-valuenow 为 0 | 0 | 0 | PASS |
+| 11 | 360x640/free-mode-hidden-initial | 初始加载：#freeMode 隐藏 | true | exists=true, hidden=true | PASS |
+| 12 | 360x640/legacy-progress-absent | 旧版 #progress 题号文字 / .bar 进度条不存在 | true | #progress=false, .bar=false | PASS |
+| 13 | 360x640/question-nonempty | 题目文字非空（动态加载 selector 后已初始化） | true | 下面哪颗行星在今晚前半夜可以不借助任何仪器观测到？ | PASS |
+| 14 | 360x640/question-type-text | 题目下方灰色小字显示当前题目类别 | 类别：天象与时间历法 | 类别：天象与时间历法 | PASS |
+| 15 | 360x640/question-type-small-gray | 类别小字：字号 ≤ 14px 且为灰色系 | true | fontSize=12px, color=rgb(138, 147, 178) | PASS |
+| 16 | 360x640/option-count | 选项按钮数量 | 4 | 4 | PASS |
+| 17 | 360x640/option-letters | 选项字母 A B C D | A,B,C,D | A,B,C,D | PASS |
+| 18 | 360x640/option-text-nonempty | 4 个选项文字均非空 | true | ["土星","火星","金星","水星"] | PASS |
+| 19 | 360x640/state-initial-v3 | 初始 localStorage v3 合法（currentId 在题库、step=0、q/log 为空） | true | currentId=2013-4, step=0, q=0, log=0 | PASS |
+| 20 | 360x640/initial-no-h-overflow | 初始界面无横向溢出 | true | scrollWidth=360, innerWidth=360, overflow=0px | PASS |
+| 21 | 360x640/shot-initial-size | 初始截图尺寸 | 360x640 | 360x640 | PASS |
+| 22 | 360x640/feedback-progress | 反馈期间仍停留在当前题（600ms 反馈，未提前切题） | 下面哪颗行星在今晚前半夜可以不借助任何仪器观测到？ | 下面哪颗行星在今晚前半夜可以不借助任何仪器观测到？ | PASS |
+| 23 | 360x640/feedback-correct-marked | 反馈：正确项被标记为绿色（.correct） | [2] | [2] | PASS |
+| 24 | 360x640/feedback-wrong-marked | 反馈：答对时没有红色标记（.wrong） | [] | [] | PASS |
+| 25 | 360x640/feedback-correct-no-explanation | 答对时不显示解析面板 | true | hidden=true | PASS |
+| 26 | 360x640/shot-feedback-size | 反馈截图尺寸 | 360x640 | 360x640 | PASS |
+| 27 | 360x640/natural-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
+| 28 | 360x640/natural-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2015-23 | PASS |
+| 29 | 360x640/natural-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795356120088} | PASS |
+| 30 | 360x640/natural-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2013-4","type":"天象与时间历法","ok":true,"step":1} | PASS |
+| 31 | 360x640/after-answer-question-changed | 约 600ms 反馈 + 淡出后切换到 v3.currentId 对应的新题 | true | 最近我们在凌晨可以看到的大行星中不包括？ | PASS |
+| 32 | 360x640/after-answer-option-count | 换题后选项按钮数量 | 4 | 4 | PASS |
+| 33 | 360x640/after-answer-fade-cleared | 淡入淡出结束（fade class 移除） | true | fade=false | PASS |
+| 34 | 360x640/after-answer-daily-visible | 切题后每日进度条仍可见 | true | dailyHidden=false, freeModeHidden=true | PASS |
+| 35 | 360x640/after-answer-daily-count | 自然首题答对后每日计数为 1 / 20 | 1 / 20 | 1 / 20 | PASS |
+| 36 | 360x640/after-answer-daily-fill | 自然首题答对后填充比例约 0.05（容差 0.02） | true | ratio=0.0500 (fill=15.6px, track=312.0px) | PASS |
+| 37 | 360x640/question-type-updated | 切题后类别小字同步更新为新题类型 | 类别：天象与时间历法 | 类别：天象与时间历法 | PASS |
+| 38 | 360x640/shot-after-answer-size | 作答后截图尺寸 | 360x640 | 360x640 | PASS |
+| 39 | 360x640/resume-question | 刷新后恢复到同一道题 | 最近我们在凌晨可以看到的大行星中不包括？ | 最近我们在凌晨可以看到的大行星中不包括？ | PASS |
+| 40 | 360x640/resume-state | 刷新后 v3 currentId/step/log 不丢 | true | currentId=2015-23, step=1, log=1 | PASS |
+| 41 | 360x640/resume-no-h-overflow | 刷新后无横向溢出 | true | overflow=0px | PASS |
+| 42 | 360x640/resume-option-count | 刷新后选项按钮数量 | 4 | 4 | PASS |
+| 43 | 360x640/resume-daily-count | 刷新续做后每日计数仍为 1 / 20（已持久化） | 1 / 20 | 1 / 20 | PASS |
+| 44 | 360x640/resume-daily-visible | 刷新续做后每日进度条仍可见 | true | dailyHidden=false, freeModeHidden=true | PASS |
+| 45 | 360x640/shot-resume-size | 续做截图尺寸 | 360x640 | 360x640 | PASS |
+| 46 | 360x640/wrong-daily-count | 确定性答错后每日计数保持 1 / 20（答错不推进） | 1 / 20 | 1 / 20 | PASS |
+| 47 | 360x640/wrong-daily-storage | 确定性答错后存储 correct 仍为 1 | true | {"day":"2026-11-19","correct":1,"completedAt":null} | PASS |
+| 48 | 360x640/feedback-wrong-case-correct-marked | 确定性选错：正确项标绿 | [2] | [2] | PASS |
+| 49 | 360x640/feedback-wrong-case-selected-marked | 确定性选错：选中项标红 | [0] | [0] | PASS |
+| 50 | 360x640/feedback-wrong-case-green | 确定性选错：正确项边框为绿色系（计算样式） | true | rgba(94, 220, 154, 0.95) | PASS |
+| 51 | 360x640/feedback-wrong-case-red | 确定性选错：选中项边框为红色系（计算样式） | true | rgba(255, 120, 120, 0.95) | PASS |
+| 52 | 360x640/explain-visible-wrong | 答错后显示解析面板（#explain） | true | hidden=false | PASS |
+| 53 | 360x640/explain-text | 解析文本与题库 explain 一致（去掉 ** 标记） | 1609年伽利略把望远镜指向天空观测天体，2009年国际天文年正是纪念望远镜用于天文观测400周年，故选 C。 | 1609年伽利略把望远镜指向天空观测天体，2009年国际天文年正是纪念望远镜用于天文观测400周年，故选 C。 | PASS |
+| 54 | 360x640/explain-bold | 解析中的 **加粗** 渲染为 <strong> | ["C"] | ["C"] | PASS |
+| 55 | 360x640/explain-hint-hidden-initially | 600ms 反馈期间暂不显示“轻触继续” | true | hintHidden=true | PASS |
+| 56 | 360x640/wrong-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
+| 57 | 360x640/wrong-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2015-45 | PASS |
+| 58 | 360x640/wrong-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":1,"box":0,"lastStep":1,"due":0} | PASS |
+| 59 | 360x640/wrong-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-1","type":"天文史、人物与综合常识","ok":false,"step":1} | PASS |
+| 60 | 360x640/explain-hint-visible | 反馈结束后显示“轻触继续”提示 | true | hintHidden=false | PASS |
+| 61 | 360x640/explain-no-auto-advance | 答错后不自动切题，等待用户阅读解析 | true | questionChanged=false | PASS |
+| 62 | 360x640/shot-feedback-wrong-size | 选错解析截图尺寸 | 360x640 | 360x640 | PASS |
+| 63 | 360x640/feedback-wrong-case-next | 轻触继续后进入下一题，v3.currentId 与页面一致 | true | next=2015-45 | PASS |
+| 64 | 360x640/explain-hidden-after-next | 切题后解析面板隐藏 | true | hidden=true | PASS |
+| 65 | 360x640/right-daily-count | 确定性答对后每日计数变为 2 / 20 | 2 / 20 | 2 / 20 | PASS |
+| 66 | 360x640/right-daily-not-completed | 2 / 20 时仍显示进度条、未进入自由刷题 | true | dailyHidden=false, freeModeHidden=true, aria=2 | PASS |
+| 67 | 360x640/feedback-right-case-correct-marked | 确定性选对：选中项标绿 | [0] | [0] | PASS |
+| 68 | 360x640/feedback-right-case-no-wrong | 确定性选对：没有红色标记 | [] | [] | PASS |
+| 69 | 360x640/feedback-right-case-green | 确定性选对：正确项边框为绿色系（计算样式） | true | rgba(94, 220, 154, 0.95) | PASS |
+| 70 | 360x640/feedback-right-case-no-explanation | 确定性选对：不显示解析面板 | true | hidden=true | PASS |
+| 71 | 360x640/shot-feedback-correct-size | 选对反馈截图尺寸 | 360x640 | 360x640 | PASS |
+| 72 | 360x640/right-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
+| 73 | 360x640/right-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2015-43 | PASS |
+| 74 | 360x640/right-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795356122552} | PASS |
+| 75 | 360x640/right-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-2","type":"天象与时间历法","ok":true,"step":1} | PASS |
+| 76 | 360x640/feedback-right-case-next | 选对反馈结束后进入下一题，v3.currentId 与页面一致 | true | next=2015-43 | PASS |
+| 77 | 360x640/long-opt-question | 长题场景定位到目标题 | 2019 年和 2020 年诺贝尔物理学奖都颁发给了天文学家，或者在天文学研究领域做出重要贡献的科学家。以下哪项是错的？ | 2019 年和 2020 年诺贝尔物理学奖都颁发给了天文学家，或者在天文学研究领域做出重要贡献的科学家。以下哪项是错的？ | PASS |
+| 78 | 360x640/long-opt-h-overflow | 长题（题干+选项最长）文档无横向溢出 | true | scrollWidth=360, innerWidth=360, overflow=0px | PASS |
+| 79 | 360x640/long-opt-question-wrap | 长题题干发生换行（行数 ≥ 2） | true | lines=4 (byHeight=4, byRange=4) | PASS |
+| 80 | 360x640/long-opt-option-wrap | 长选项文字发生换行（≥1 个选项行数 ≥ 2） | true | 换行选项数=4, 各选项行数=[6,6,5,5] | PASS |
+| 81 | 360x640/long-opt-option-no-overflow | 选项文字无横向溢出（scrollWidth ≤ clientWidth） | true | 各选项溢出=[0,0,0,0] | PASS |
+| 82 | 360x640/long-opt-option-count | 长题选项按钮数量 | 4 | 4 | PASS |
+| 83 | 360x640/shot-long-size | 长题截图尺寸 | 360x640 | 360x640 | PASS |
+| 84 | 360x640/long-stem-question | 最长题干场景定位到目标题 | 2017年8月22日和25日，世界上最大的单体射电望远镜FAST发现了两颗脉冲星：一颗编号J1859-0131，自转周期为1.83秒，据估算距离地球1.6万光年；一颗编号J1931-01，自转周期0.59秒，据估算距离地球约4100光年。请问FAST的直径和所在地区： | 2017年8月22日和25日，世界上最大的单体射电望远镜FAST发现了两颗脉冲星：一颗编号J1859-0131，自转周期为1.83秒，据估算距离地球1.6万光年；一颗编号J1931-01，自转周期0.59秒，据估算距离地球约4100光年。请问FAST的直径和所在地区： | PASS |
+| 85 | 360x640/long-stem-h-overflow | 最长题干无横向溢出 | true | overflow=0px | PASS |
+| 86 | 360x640/long-stem-wrap | 最长题干发生换行（行数 ≥ 3） | true | lines=8 | PASS |
+| 87 | 360x640/shot-long-stem-size | 最长题干截图尺寸 | true | 360x640 | PASS |
+| 88 | 360x640/tallest-1-top-reachable | 内容最多题 2020-29 顶部未被裁切（quizTop ≥ 0） | true | quizTop=24.0, scrollHeight=938, innerHeight=640 | PASS |
+| 89 | 360x640/tallest-1-bottom-reachable | 内容最多题 2020-29 滚动到底后末选项可见（可达） | true | maxScroll=298, lastOptionBottom=616.1, innerHeight=640 | PASS |
+| 90 | 360x640/tallest-2-top-reachable | 内容最多题 2017-21 顶部未被裁切（quizTop ≥ 0） | true | quizTop=24.0, scrollHeight=676, innerHeight=640 | PASS |
+| 91 | 360x640/tallest-2-bottom-reachable | 内容最多题 2017-21 滚动到底后末选项可见（可达） | true | maxScroll=36, lastOptionBottom=616.0, innerHeight=640 | PASS |
+| 92 | 360x640/tallest-3-top-reachable | 内容最多题 2017-37 顶部未被裁切（quizTop ≥ 0） | true | quizTop=24.0, scrollHeight=644, innerHeight=640 | PASS |
+| 93 | 360x640/tallest-3-bottom-reachable | 内容最多题 2017-37 滚动到底后末选项可见（可达） | true | maxScroll=4, lastOptionBottom=616.0, innerHeight=640 | PASS |
+| 94 | 360x640/recent-exclude-completed | 连续作答 12 题全部完成并切题 | true | 12/12 | PASS |
+| 95 | 360x640/recent-step | 连续作答后 v3.step 与 log 长度一致（12） | {"step":12,"log":12} | {"step":12,"log":12} | PASS |
+| 96 | 360x640/recent-adjacent-no-repeat | 连续作答的相邻题目不重复 | [] | [] | PASS |
+| 97 | 360x640/recent-10-exclusion | 每道新题都不在之前最近 10 题中（含当前题） | true | 最近 10 题均无重复 | PASS |
+| 98 | 360x640/recent-current-valid | 连续作答后当前题仍是题库中的有效题 | true | currentId=2019-47 | PASS |
+| 99 | 360x640/double-click-different-step | 同步连点两个不同选项只前进 1 题 | 1 | 1 | PASS |
+| 100 | 360x640/double-click-different-log | 同步连点不同选项只记录 1 条作答（第一次点击的题） | 1 | 1 | PASS |
+| 101 | 360x640/double-click-different-current | 同步连点只出一次下一题（currentId 变化） | true | true | PASS |
+| 102 | 360x640/double-click-same-step | 同步连点同一选项两次只前进 1 题 | 2 | 2 | PASS |
+| 103 | 360x640/double-click-same-current | 同步连点同一选项只出一次下一题 | true | true | PASS |
+| 104 | 360x640/double-click-50ms-step | 间隔 50ms 连点两次只前进 1 题 | 3 | 3 | PASS |
+| 105 | 360x640/double-click-50ms-current | 间隔 50ms 连点只出一次下一题 | true | true | PASS |
+| 106 | 360x640/shot-double-click-size | 防连点截图尺寸 | true | 360x640 | PASS |
+| 107 | 360x640/keyboard-a-feedback | 键盘 A 键选择第 1 项（正确）并显示绿色反馈 | {"correct":[0],"wrong":[]} | {"correct":[0],"wrong":[]} | PASS |
+| 108 | 360x640/keyboard-a-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
+| 109 | 360x640/keyboard-a-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2020-35 | PASS |
+| 110 | 360x640/keyboard-a-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795356139023} | PASS |
+| 111 | 360x640/keyboard-a-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-2","type":"天象与时间历法","ok":true,"step":1} | PASS |
+| 112 | 360x640/keyboard-a-next | 键盘 A 键答对后自动切题 | true | 已切题 | PASS |
+| 113 | 360x640/keyboard-2-feedback | 键盘 2 键选择第 2 项（正确）并显示绿色反馈 | {"correct":[1],"wrong":[]} | {"correct":[1],"wrong":[]} | PASS |
+| 114 | 360x640/keyboard-2-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
+| 115 | 360x640/keyboard-2-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2019-7 | PASS |
+| 116 | 360x640/keyboard-2-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795356140007} | PASS |
+| 117 | 360x640/keyboard-2-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-4","type":"太阳系与月球","ok":true,"step":1} | PASS |
+| 118 | 360x640/keyboard-2-next | 数字键 2 答对后自动切题 | true | 已切题 | PASS |
+| 119 | 360x640/daily-count-before-migration | 本视口累计答对 19 题后每日计数为 19 / 20 | 19 / 20 | 19 / 20 | PASS |
+| 120 | 360x640/daily-not-completed-before-migration | 19 / 20 时进度条仍可见、自由刷题未出现、无庆祝特效 | true | count=19 / 20, aria=19, daily={"day":"2026-11-19","correct":19,"completedAt":null} | PASS |
+| 121 | 360x640/v2-migration-step | v2 迁移后 v3.step = v2.answers.length | 3 | 3 | PASS |
+| 122 | 360x640/v2-migration-currentId | v2 迁移后 v3.currentId = v2.currentId | 2009-3 | 2009-3 | PASS |
+| 123 | 360x640/v2-migration-q | v2 迁移后 v3.q 正确（seen/wrong/box/lastStep/due） | true | 全部匹配 | PASS |
+| 124 | 360x640/v2-migration-log | v2 迁移后 v3.log 按 v2.answers 顺序与 step 正确 | true | 全部匹配 | PASS |
+| 125 | 360x640/v2-key-preserved | v2 迁移后 astroQuizState.v2 原样保留 | 115 字节 | 115 字节 | PASS |
+| 126 | 360x640/v2-migration-question | v2 迁移后展示 v2.currentId 对应题目 | 光年是天文学中的 | 光年是天文学中的 | PASS |
+| 127 | 360x640/v1-migration-step | v1 迁移后 v3.step = v1.answers.length | 2 | 2 | PASS |
+| 128 | 360x640/v1-migration-currentId | v1 迁移后 v3.currentId = order[index] | 2009-6 | 2009-6 | PASS |
+| 129 | 360x640/v1-migration-q | v1 迁移后 v3.q 正确（seen/wrong/box/lastStep/due） | true | 全部匹配 | PASS |
+| 130 | 360x640/v1-migration-log | v1 迁移后 v3.log 按 v1.answers 顺序与 step 正确 | true | 全部匹配 | PASS |
+| 131 | 360x640/v1-key-preserved | v1 迁移后 astroQuizState.v1 原样保留 | 4839 字节 | 4839 字节 | PASS |
+| 132 | 360x640/v1-migration-question | v1 迁移后展示 order[index] 对应题目 | 除太阳以外，全天最亮的恒星是 | 除太阳以外，全天最亮的恒星是 | PASS |
+| 133 | 360x640/v3-invalid-fallback-state | v3 含题库外 id 时整份判非法并回退为空 v3（step=0、q/log 空、currentId 合法） | true | currentId=2016-49, step=0, q=0, log=0 | PASS |
+| 134 | 360x640/v3-invalid-fallback-question | 回退后页面仍展示有效题目（未显示题库加载失败） | true | 有诗曰：“高悬方杳杳，孤白乍荧荧”说的就是老人星。不考虑大气因素，老人星在北纬  | PASS |
+| 135 | 360x640/v3-invalid-valid-currentid-q-fallback | v3.currentId 合法但 q key / log id 含题库外 id → 判非法并回退为空 v3（页面仍出题） | true | currentId=2020-36, step=0, q=0, log=0 | PASS |
+| 136 | 360x640/v3-invalid-valid-currentid-q-question | 非法 v3（currentId 合法）回退后页面展示有效题目，未显示题库加载失败 | true | 2020 年国庆节当晚，天气晴朗，小明同学带着自己的望远镜进行路边天文活动。他首 | PASS |
+| 137 | 360x640/v3-invalid-valid-currentid-v2-migration | v3（currentId 合法、log id 非法）判非法后按合法 v2 迁移到 v3 | true | step/q/log 与 v2 一致 | PASS |
+| 138 | 360x640/v3-invalid-v2-key-preserved | v3 非法时按 v2 迁移后 astroQuizState.v2 原样保留 | 91 字节 | 91 字节 | PASS |
+| 139 | 360x640/v3-invalid-v2-migration-question | v3 非法 → v2 迁移后展示 v2.currentId 对应题目 | 狮子座流星雨每年出现在 | 狮子座流星雨每年出现在 | PASS |
+| 140 | 360x640/v3-invalid-valid-currentid-v1-migration | v3（currentId 合法、q key 非法）判非法后按合法 v1 迁移到 v3 | true | step/q/log 与 v1 一致 | PASS |
+| 141 | 360x640/v3-invalid-v1-key-preserved | v3 非法时按 v1 迁移后 astroQuizState.v1 原样保留 | 4842 字节 | 4842 字节 | PASS |
+| 142 | 360x640/v3-invalid-v1-migration-question | v3 非法 → v1 迁移后展示 order[index] 对应题目 | 金牛座中有一个著名的“七姐妹星团”，指的是 | 金牛座中有一个著名的“七姐妹星团”，指的是 | PASS |
+| 143 | 360x640/no-console-errors | 页面无 console error / warning / pageerror / 请求失败 | true | "0 条" | PASS |
+| 144 | 412x915/bank-length | window.QUESTION_BANK.length | 485 | 485 | PASS |
+| 145 | 412x915/selector-config | window.AstroSelector.CONFIG 可读，box 上限 = intervalsDays.length - 1 | true | intervalsDays=[0,1,3,7,21,60], maxBox=5, logLimit=500 | PASS |
+| 146 | 412x915/daily-visible-initial | 初始加载：每日目标进度条可见（#daily 未隐藏） | true | exists=true, hidden=false | PASS |
+| 147 | 412x915/daily-count-initial | 初始加载：#dailyCount 文本为 0 / 20 | 0 / 20 | 0 / 20 | PASS |
+| 148 | 412x915/daily-fill-initial | 初始加载：#dailyFill 宽度为 0 | true | fillWidth=0px | PASS |
+| 149 | 412x915/daily-aria-initial | 初始加载：#dailyTrack 的 aria-valuenow 为 0 | 0 | 0 | PASS |
+| 150 | 412x915/free-mode-hidden-initial | 初始加载：#freeMode 隐藏 | true | exists=true, hidden=true | PASS |
+| 151 | 412x915/legacy-progress-absent | 旧版 #progress 题号文字 / .bar 进度条不存在 | true | #progress=false, .bar=false | PASS |
+| 152 | 412x915/question-nonempty | 题目文字非空（动态加载 selector 后已初始化） | true | 如果坚持每天在同一个地方同一个时间拍摄太阳，那么一年之后将所有照片叠加到同样的背 | PASS |
+| 153 | 412x915/question-type-text | 题目下方灰色小字显示当前题目类别 | 类别：天象与时间历法 | 类别：天象与时间历法 | PASS |
+| 154 | 412x915/question-type-small-gray | 类别小字：字号 ≤ 14px 且为灰色系 | true | fontSize=13px, color=rgb(138, 147, 178) | PASS |
+| 155 | 412x915/option-count | 选项按钮数量 | 4 | 4 | PASS |
+| 156 | 412x915/option-letters | 选项字母 A B C D | A,B,C,D | A,B,C,D | PASS |
+| 157 | 412x915/option-text-nonempty | 4 个选项文字均非空 | true | ["1","O","8","X"] | PASS |
+| 158 | 412x915/state-initial-v3 | 初始 localStorage v3 合法（currentId 在题库、step=0、q/log 为空） | true | currentId=2012-24, step=0, q=0, log=0 | PASS |
+| 159 | 412x915/initial-no-h-overflow | 初始界面无横向溢出 | true | scrollWidth=412, innerWidth=412, overflow=0px | PASS |
+| 160 | 412x915/shot-initial-size | 初始截图尺寸 | 412x915 | 412x915 | PASS |
+| 161 | 412x915/feedback-progress | 反馈期间仍停留在当前题（600ms 反馈，未提前切题） | 如果坚持每天在同一个地方同一个时间拍摄太阳，那么一年之后将所有照片叠加到同样的背景中，会看到太阳划过的轨迹看起来像哪一个字母或数字 | 如果坚持每天在同一个地方同一个时间拍摄太阳，那么一年之后将所有照片叠加到同样的背景中，会看到太阳划过的轨迹看起来像哪一个字母或数字 | PASS |
+| 162 | 412x915/feedback-correct-marked | 反馈：正确项被标记为绿色（.correct） | [2] | [2] | PASS |
+| 163 | 412x915/feedback-wrong-marked | 反馈：答对时没有红色标记（.wrong） | [] | [] | PASS |
+| 164 | 412x915/feedback-correct-no-explanation | 答对时不显示解析面板 | true | hidden=true | PASS |
+| 165 | 412x915/shot-feedback-size | 反馈截图尺寸 | 412x915 | 412x915 | PASS |
+| 166 | 412x915/natural-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
+| 167 | 412x915/natural-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2013-5 | PASS |
+| 168 | 412x915/natural-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795356141486} | PASS |
+| 169 | 412x915/natural-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2012-24","type":"天象与时间历法","ok":true,"step":1} | PASS |
+| 170 | 412x915/after-answer-question-changed | 约 600ms 反馈 + 淡出后切换到 v3.currentId 对应的新题 | true | 11 月 18 日，我们可以观测到一次水星西大距，最高时距离太阳地平高度 17  | PASS |
+| 171 | 412x915/after-answer-option-count | 换题后选项按钮数量 | 4 | 4 | PASS |
+| 172 | 412x915/after-answer-fade-cleared | 淡入淡出结束（fade class 移除） | true | fade=false | PASS |
+| 173 | 412x915/after-answer-daily-visible | 切题后每日进度条仍可见 | true | dailyHidden=false, freeModeHidden=true | PASS |
+| 174 | 412x915/after-answer-daily-count | 自然首题答对后每日计数为 1 / 20 | 1 / 20 | 1 / 20 | PASS |
+| 175 | 412x915/after-answer-daily-fill | 自然首题答对后填充比例约 0.05（容差 0.02） | true | ratio=0.0500 (fill=18.2px, track=364.0px) | PASS |
+| 176 | 412x915/question-type-updated | 切题后类别小字同步更新为新题类型 | 类别：天象与时间历法 | 类别：天象与时间历法 | PASS |
+| 177 | 412x915/shot-after-answer-size | 作答后截图尺寸 | 412x915 | 412x915 | PASS |
+| 178 | 412x915/resume-question | 刷新后恢复到同一道题 | 11 月 18 日，我们可以观测到一次水星西大距，最高时距离太阳地平高度 17 度，请问观测它的时间应选在什么时候？ | 11 月 18 日，我们可以观测到一次水星西大距，最高时距离太阳地平高度 17 度，请问观测它的时间应选在什么时候？ | PASS |
+| 179 | 412x915/resume-state | 刷新后 v3 currentId/step/log 不丢 | true | currentId=2013-5, step=1, log=1 | PASS |
+| 180 | 412x915/resume-no-h-overflow | 刷新后无横向溢出 | true | overflow=0px | PASS |
+| 181 | 412x915/resume-option-count | 刷新后选项按钮数量 | 4 | 4 | PASS |
+| 182 | 412x915/resume-daily-count | 刷新续做后每日计数仍为 1 / 20（已持久化） | 1 / 20 | 1 / 20 | PASS |
+| 183 | 412x915/resume-daily-visible | 刷新续做后每日进度条仍可见 | true | dailyHidden=false, freeModeHidden=true | PASS |
+| 184 | 412x915/shot-resume-size | 续做截图尺寸 | 412x915 | 412x915 | PASS |
+| 185 | 412x915/wrong-daily-count | 确定性答错后每日计数保持 1 / 20（答错不推进） | 1 / 20 | 1 / 20 | PASS |
+| 186 | 412x915/wrong-daily-storage | 确定性答错后存储 correct 仍为 1 | true | {"day":"2026-11-19","correct":1,"completedAt":null} | PASS |
+| 187 | 412x915/feedback-wrong-case-correct-marked | 确定性选错：正确项标绿 | [2] | [2] | PASS |
+| 188 | 412x915/feedback-wrong-case-selected-marked | 确定性选错：选中项标红 | [0] | [0] | PASS |
+| 189 | 412x915/feedback-wrong-case-green | 确定性选错：正确项边框为绿色系（计算样式） | true | rgba(94, 220, 154, 0.95) | PASS |
+| 190 | 412x915/feedback-wrong-case-red | 确定性选错：选中项边框为红色系（计算样式） | true | rgba(255, 120, 120, 0.95) | PASS |
+| 191 | 412x915/explain-visible-wrong | 答错后显示解析面板（#explain） | true | hidden=false | PASS |
+| 192 | 412x915/explain-text | 解析文本与题库 explain 一致（去掉 ** 标记） | 1609年伽利略把望远镜指向天空观测天体，2009年国际天文年正是纪念望远镜用于天文观测400周年，故选 C。 | 1609年伽利略把望远镜指向天空观测天体，2009年国际天文年正是纪念望远镜用于天文观测400周年，故选 C。 | PASS |
+| 193 | 412x915/explain-bold | 解析中的 **加粗** 渲染为 <strong> | ["C"] | ["C"] | PASS |
+| 194 | 412x915/explain-hint-hidden-initially | 600ms 反馈期间暂不显示“轻触继续” | true | hintHidden=true | PASS |
+| 195 | 412x915/wrong-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
+| 196 | 412x915/wrong-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2015-31 | PASS |
+| 197 | 412x915/wrong-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":1,"box":0,"lastStep":1,"due":0} | PASS |
+| 198 | 412x915/wrong-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-1","type":"天文史、人物与综合常识","ok":false,"step":1} | PASS |
+| 199 | 412x915/explain-hint-visible | 反馈结束后显示“轻触继续”提示 | true | hintHidden=false | PASS |
+| 200 | 412x915/explain-no-auto-advance | 答错后不自动切题，等待用户阅读解析 | true | questionChanged=false | PASS |
+| 201 | 412x915/shot-feedback-wrong-size | 选错解析截图尺寸 | 412x915 | 412x915 | PASS |
+| 202 | 412x915/feedback-wrong-case-next | 轻触继续后进入下一题，v3.currentId 与页面一致 | true | next=2015-31 | PASS |
+| 203 | 412x915/explain-hidden-after-next | 切题后解析面板隐藏 | true | hidden=true | PASS |
+| 204 | 412x915/right-daily-count | 确定性答对后每日计数变为 2 / 20 | 2 / 20 | 2 / 20 | PASS |
+| 205 | 412x915/right-daily-not-completed | 2 / 20 时仍显示进度条、未进入自由刷题 | true | dailyHidden=false, freeModeHidden=true, aria=2 | PASS |
+| 206 | 412x915/feedback-right-case-correct-marked | 确定性选对：选中项标绿 | [0] | [0] | PASS |
+| 207 | 412x915/feedback-right-case-no-wrong | 确定性选对：没有红色标记 | [] | [] | PASS |
+| 208 | 412x915/feedback-right-case-green | 确定性选对：正确项边框为绿色系（计算样式） | true | rgba(94, 220, 154, 0.95) | PASS |
+| 209 | 412x915/feedback-right-case-no-explanation | 确定性选对：不显示解析面板 | true | hidden=true | PASS |
+| 210 | 412x915/shot-feedback-correct-size | 选对反馈截图尺寸 | 412x915 | 412x915 | PASS |
+| 211 | 412x915/right-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
+| 212 | 412x915/right-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2009-32 | PASS |
+| 213 | 412x915/right-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795356143987} | PASS |
+| 214 | 412x915/right-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-2","type":"天象与时间历法","ok":true,"step":1} | PASS |
+| 215 | 412x915/feedback-right-case-next | 选对反馈结束后进入下一题，v3.currentId 与页面一致 | true | next=2009-32 | PASS |
+| 216 | 412x915/long-opt-question | 长题场景定位到目标题 | 2019 年和 2020 年诺贝尔物理学奖都颁发给了天文学家，或者在天文学研究领域做出重要贡献的科学家。以下哪项是错的？ | 2019 年和 2020 年诺贝尔物理学奖都颁发给了天文学家，或者在天文学研究领域做出重要贡献的科学家。以下哪项是错的？ | PASS |
+| 217 | 412x915/long-opt-h-overflow | 长题（题干+选项最长）文档无横向溢出 | true | scrollWidth=412, innerWidth=412, overflow=0px | PASS |
+| 218 | 412x915/long-opt-question-wrap | 长题题干发生换行（行数 ≥ 2） | true | lines=4 (byHeight=4, byRange=4) | PASS |
+| 219 | 412x915/long-opt-option-wrap | 长选项文字发生换行（≥1 个选项行数 ≥ 2） | true | 换行选项数=4, 各选项行数=[5,5,4,4] | PASS |
+| 220 | 412x915/long-opt-option-no-overflow | 选项文字无横向溢出（scrollWidth ≤ clientWidth） | true | 各选项溢出=[0,0,0,0] | PASS |
+| 221 | 412x915/long-opt-option-count | 长题选项按钮数量 | 4 | 4 | PASS |
+| 222 | 412x915/shot-long-size | 长题截图尺寸 | 412x915 | 412x915 | PASS |
+| 223 | 412x915/long-stem-question | 最长题干场景定位到目标题 | 2017年8月22日和25日，世界上最大的单体射电望远镜FAST发现了两颗脉冲星：一颗编号J1859-0131，自转周期为1.83秒，据估算距离地球1.6万光年；一颗编号J1931-01，自转周期0.59秒，据估算距离地球约4100光年。请问FAST的直径和所在地区： | 2017年8月22日和25日，世界上最大的单体射电望远镜FAST发现了两颗脉冲星：一颗编号J1859-0131，自转周期为1.83秒，据估算距离地球1.6万光年；一颗编号J1931-01，自转周期0.59秒，据估算距离地球约4100光年。请问FAST的直径和所在地区： | PASS |
+| 224 | 412x915/long-stem-h-overflow | 最长题干无横向溢出 | true | overflow=0px | PASS |
+| 225 | 412x915/long-stem-wrap | 最长题干发生换行（行数 ≥ 3） | true | lines=7 | PASS |
+| 226 | 412x915/shot-long-stem-size | 最长题干截图尺寸 | true | 412x915 | PASS |
+| 227 | 412x915/tallest-1-top-reachable | 内容最多题 2020-29 顶部未被裁切（quizTop ≥ 0） | true | quizTop=25.4, scrollHeight=915, innerHeight=915 | PASS |
+| 228 | 412x915/tallest-1-bottom-reachable | 内容最多题 2020-29 滚动到底后末选项可见（可达） | true | maxScroll=0, lastOptionBottom=889.6, innerHeight=915 | PASS |
+| 229 | 412x915/tallest-2-top-reachable | 内容最多题 2017-21 顶部未被裁切（quizTop ≥ 0） | true | quizTop=134.3, scrollHeight=915, innerHeight=915 | PASS |
+| 230 | 412x915/tallest-2-bottom-reachable | 内容最多题 2017-21 滚动到底后末选项可见（可达） | true | maxScroll=0, lastOptionBottom=780.7, innerHeight=915 | PASS |
+| 231 | 412x915/tallest-3-top-reachable | 内容最多题 2017-37 顶部未被裁切（quizTop ≥ 0） | true | quizTop=151.9, scrollHeight=915, innerHeight=915 | PASS |
+| 232 | 412x915/tallest-3-bottom-reachable | 内容最多题 2017-37 滚动到底后末选项可见（可达） | true | maxScroll=0, lastOptionBottom=763.1, innerHeight=915 | PASS |
+| 233 | 412x915/recent-exclude-completed | 连续作答 12 题全部完成并切题 | true | 12/12 | PASS |
+| 234 | 412x915/recent-step | 连续作答后 v3.step 与 log 长度一致（12） | {"step":12,"log":12} | {"step":12,"log":12} | PASS |
+| 235 | 412x915/recent-adjacent-no-repeat | 连续作答的相邻题目不重复 | [] | [] | PASS |
+| 236 | 412x915/recent-10-exclusion | 每道新题都不在之前最近 10 题中（含当前题） | true | 最近 10 题均无重复 | PASS |
+| 237 | 412x915/recent-current-valid | 连续作答后当前题仍是题库中的有效题 | true | currentId=2019-41 | PASS |
+| 238 | 412x915/double-click-different-step | 同步连点两个不同选项只前进 1 题 | 1 | 1 | PASS |
+| 239 | 412x915/double-click-different-log | 同步连点不同选项只记录 1 条作答（第一次点击的题） | 1 | 1 | PASS |
+| 240 | 412x915/double-click-different-current | 同步连点只出一次下一题（currentId 变化） | true | true | PASS |
+| 241 | 412x915/double-click-same-step | 同步连点同一选项两次只前进 1 题 | 2 | 2 | PASS |
+| 242 | 412x915/double-click-same-current | 同步连点同一选项只出一次下一题 | true | true | PASS |
+| 243 | 412x915/double-click-50ms-step | 间隔 50ms 连点两次只前进 1 题 | 3 | 3 | PASS |
+| 244 | 412x915/double-click-50ms-current | 间隔 50ms 连点只出一次下一题 | true | true | PASS |
+| 245 | 412x915/shot-double-click-size | 防连点截图尺寸 | true | 412x915 | PASS |
+| 246 | 412x915/keyboard-a-feedback | 键盘 A 键选择第 1 项（正确）并显示绿色反馈 | {"correct":[0],"wrong":[]} | {"correct":[0],"wrong":[]} | PASS |
+| 247 | 412x915/keyboard-a-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
+| 248 | 412x915/keyboard-a-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2015-20 | PASS |
+| 249 | 412x915/keyboard-a-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795356160356} | PASS |
+| 250 | 412x915/keyboard-a-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-2","type":"天象与时间历法","ok":true,"step":1} | PASS |
+| 251 | 412x915/keyboard-a-next | 键盘 A 键答对后自动切题 | true | 已切题 | PASS |
+| 252 | 412x915/keyboard-2-feedback | 键盘 2 键选择第 2 项（正确）并显示绿色反馈 | {"correct":[1],"wrong":[]} | {"correct":[1],"wrong":[]} | PASS |
+| 253 | 412x915/keyboard-2-v3-step | 作答后 v3.step = 旧 step + 1 | true | before=0, after=1 | PASS |
+| 254 | 412x915/keyboard-2-v3-next-saved | 作答后 v3.currentId 变化且为题库中的下一题（反馈期间已落盘） | true | currentId=2015-45 | PASS |
+| 255 | 412x915/keyboard-2-v3-record | v3.q[oldId] 正确（seen/wrong/box 0-5/lastStep==step/due 数字） | true | {"seen":1,"wrong":0,"box":2,"lastStep":1,"due":1795356161339} | PASS |
+| 256 | 412x915/keyboard-2-v3-log-last | v3.log 最后一条匹配 {id, type, ok, step} | true | {"id":"2009-4","type":"太阳系与月球","ok":true,"step":1} | PASS |
+| 257 | 412x915/keyboard-2-next | 数字键 2 答对后自动切题 | true | 已切题 | PASS |
+| 258 | 412x915/daily-count-before-migration | 本视口累计答对 19 题后每日计数为 19 / 20 | 19 / 20 | 19 / 20 | PASS |
+| 259 | 412x915/daily-not-completed-before-migration | 19 / 20 时进度条仍可见、自由刷题未出现、无庆祝特效 | true | count=19 / 20, aria=19, daily={"day":"2026-11-19","correct":19,"completedAt":null} | PASS |
+| 260 | 412x915/v2-migration-step | v2 迁移后 v3.step = v2.answers.length | 3 | 3 | PASS |
+| 261 | 412x915/v2-migration-currentId | v2 迁移后 v3.currentId = v2.currentId | 2009-3 | 2009-3 | PASS |
+| 262 | 412x915/v2-migration-q | v2 迁移后 v3.q 正确（seen/wrong/box/lastStep/due） | true | 全部匹配 | PASS |
+| 263 | 412x915/v2-migration-log | v2 迁移后 v3.log 按 v2.answers 顺序与 step 正确 | true | 全部匹配 | PASS |
+| 264 | 412x915/v2-key-preserved | v2 迁移后 astroQuizState.v2 原样保留 | 115 字节 | 115 字节 | PASS |
+| 265 | 412x915/v2-migration-question | v2 迁移后展示 v2.currentId 对应题目 | 光年是天文学中的 | 光年是天文学中的 | PASS |
+| 266 | 412x915/v1-migration-step | v1 迁移后 v3.step = v1.answers.length | 2 | 2 | PASS |
+| 267 | 412x915/v1-migration-currentId | v1 迁移后 v3.currentId = order[index] | 2009-6 | 2009-6 | PASS |
+| 268 | 412x915/v1-migration-q | v1 迁移后 v3.q 正确（seen/wrong/box/lastStep/due） | true | 全部匹配 | PASS |
+| 269 | 412x915/v1-migration-log | v1 迁移后 v3.log 按 v1.answers 顺序与 step 正确 | true | 全部匹配 | PASS |
+| 270 | 412x915/v1-key-preserved | v1 迁移后 astroQuizState.v1 原样保留 | 4839 字节 | 4839 字节 | PASS |
+| 271 | 412x915/v1-migration-question | v1 迁移后展示 order[index] 对应题目 | 除太阳以外，全天最亮的恒星是 | 除太阳以外，全天最亮的恒星是 | PASS |
+| 272 | 412x915/v3-invalid-fallback-state | v3 含题库外 id 时整份判非法并回退为空 v3（step=0、q/log 空、currentId 合法） | true | currentId=2010-7, step=0, q=0, log=0 | PASS |
+| 273 | 412x915/v3-invalid-fallback-question | 回退后页面仍展示有效题目（未显示题库加载失败） | true | ______流星雨是三大流星雨之一，其爆发极大期发生在每年的 8 月中上旬，特点 | PASS |
+| 274 | 412x915/v3-invalid-valid-currentid-q-fallback | v3.currentId 合法但 q key / log id 含题库外 id → 判非法并回退为空 v3（页面仍出题） | true | currentId=2016-35, step=0, q=0, log=0 | PASS |
+| 275 | 412x915/v3-invalid-valid-currentid-q-question | 非法 v3（currentId 合法）回退后页面展示有效题目，未显示题库加载失败 | true | 下列关于日月食的说法错误的是________？ | PASS |
+| 276 | 412x915/v3-invalid-valid-currentid-v2-migration | v3（currentId 合法、log id 非法）判非法后按合法 v2 迁移到 v3 | true | step/q/log 与 v2 一致 | PASS |
+| 277 | 412x915/v3-invalid-v2-key-preserved | v3 非法时按 v2 迁移后 astroQuizState.v2 原样保留 | 91 字节 | 91 字节 | PASS |
+| 278 | 412x915/v3-invalid-v2-migration-question | v3 非法 → v2 迁移后展示 v2.currentId 对应题目 | 狮子座流星雨每年出现在 | 狮子座流星雨每年出现在 | PASS |
+| 279 | 412x915/v3-invalid-valid-currentid-v1-migration | v3（currentId 合法、q key 非法）判非法后按合法 v1 迁移到 v3 | true | step/q/log 与 v1 一致 | PASS |
+| 280 | 412x915/v3-invalid-v1-key-preserved | v3 非法时按 v1 迁移后 astroQuizState.v1 原样保留 | 4842 字节 | 4842 字节 | PASS |
+| 281 | 412x915/v3-invalid-v1-migration-question | v3 非法 → v1 迁移后展示 order[index] 对应题目 | 金牛座中有一个著名的“七姐妹星团”，指的是 | 金牛座中有一个著名的“七姐妹星团”，指的是 | PASS |
+| 282 | 412x915/no-console-errors | 页面无 console error / warning / pageerror / 请求失败 | true | "0 条" | PASS |
+| 283 | cold-start/completed | 空状态连续作答 16 题全部完成并切题 | 16 | 16 | PASS |
+| 284 | cold-start/type-sequence | 冷启动类型序列 = TYPE_ORDER 每类 2 题（无到期复习时） | ["天象与时间历法","天象与时间历法","恒星与星座","恒星与星座","太阳系与月球","太阳系与月球","天文观测与望远镜","天文观测与望远镜","时事与新闻","时事与新闻","天文史、人物与综合常识","天文史、人物与综合常识","航天与空间探测","航天与空间探测","星系与宇宙","星系与宇宙"] | ["天象与时间历法","天象与时间历法","恒星与星座","恒星与星座","太阳系与月球","太阳系与月球","天文观测与望远镜","天文观测与望远镜","时事与新闻","时事与新闻","天文史、人物与综合常识","天文史、人物与综合常识","航天与空间探测","航天与空间探测","星系与宇宙","星系与宇宙"] | PASS |
+| 285 | cold-start/step | 冷启动 16 题后 v3.step | 16 | 16 | PASS |
+| 286 | cold-start/daily-progress | 16 题全对后每日计数为 16 / 20 且进度条可见（独立 context，不会完成） | true | count=16 / 20, hidden=false, aria=16, daily={"day":"2026-11-19","correct":16,"completedAt":null} | PASS |
+| 287 | cold-start/no-errors | 冷启动过程无 console error / warning / pageerror | true | 0 条 | PASS |
+| 288 | daily-goal/initial-daily-visible | 全新上下文：#daily 可见、#dailyCount 为 0 / 20、#dailyFill 宽度 0、#freeMode 隐藏 | true | visible=true, count=0 / 20, fill=0px, aria=0, freeHidden=true | PASS |
+| 289 | daily-goal/initial-daily-goal | AstroDaily.DAILY_GOAL 为 20 | 20 | 20 | PASS |
+| 290 | daily-goal/initial-daily-storage | 初始存储为今天 0 / 20（day=AstroDaily.dayKey(Date.now())，correct=0，completedAt=null） | true | key=astroQuizDaily.v1, today=2026-11-19, daily={"day":"2026-11-19","correct":0,"completedAt":null} | PASS |
+| 291 | daily-goal/first-right-count | 答对第 1 题后 #dailyCount 为 1 / 20 | 1 / 20 | 1 / 20 | PASS |
+| 292 | daily-goal/first-right-fill | 答对第 1 题后填充比例约 0.05（容差 0.02） | true | ratio=0.0490 (fill=15.3px, track=312.0px) | PASS |
+| 293 | daily-goal/first-right-storage | 答对第 1 题后存储 correct=1 | true | {"day":"2026-11-19","correct":1,"completedAt":null} | PASS |
+| 294 | daily-goal/first-right-no-vibrate | 未完成目标时答对不震动（__vibrations 为空） | [] | [] | PASS |
+| 295 | daily-goal/first-right-next | 答对第 1 题后正常自动切题 | true | 已切题 | PASS |
+| 296 | daily-goal/wrong-count-held | 确定性答错后每日计数仍为 1 / 20 | 1 / 20 | 1 / 20 | PASS |
+| 297 | daily-goal/wrong-storage-held | 确定性答错后存储 correct 仍为 1 | true | {"day":"2026-11-19","correct":1,"completedAt":null} | PASS |
+| 298 | daily-goal/wrong-continue-next | 答错后轻触继续并切到下一题 | true | 已切题 | PASS |
+| 299 | daily-goal/persist-count | 刷新后每日计数仍为 1 / 20 | 1 / 20 | 1 / 20 | PASS |
+| 300 | daily-goal/persist-storage | 刷新后存储仍为今天 1 / 20 | true | {"day":"2026-11-19","correct":1,"completedAt":null} | PASS |
+| 301 | daily-goal/cross-day-count | 跨天（昨天 20 / 20）刷新后计数重置为 0 / 20 | 0 / 20 | 0 / 20 | PASS |
+| 302 | daily-goal/cross-day-progress-visible | 跨天重置后进度条重新可见（#freeMode 隐藏） | true | dailyHidden=false, freeModeHidden=true | PASS |
+| 303 | daily-goal/cross-day-storage | 跨天重置后存储 day 等于今天 | true | today=2026-11-19, daily={"day":"2026-11-19","correct":0,"completedAt":null} | PASS |
+| 304 | daily-goal/pre-complete-count | 注入 19 / 20 后显示 19 / 20 | 19 / 20 | 19 / 20 | PASS |
+| 305 | daily-goal/pre-complete-fill | 注入 19 / 20 后填充比例约 0.95（容差 0.02） | true | stable=true, ratio=0.9500, daily={"day":"2026-11-19","correct":19,"completedAt":null} | PASS |
+| 306 | daily-goal/complete-vibrate | 第 20 题答对瞬间调用 navigator.vibrate，参数恰好 [200]（一次） | [200] | [200] | PASS |
+| 307 | daily-goal/complete-vibrate-timing | 点击后立即记录到震动（≤500ms；避免慢机器把 Playwright 外部计时误判为失败） | true | elapsed=32ms | PASS |
+| 308 | daily-goal/complete-storage | 完成后存储 correct=20 且 completedAt 为数字 | true | {"day":"2026-11-19","correct":20,"completedAt":1795096980951} | PASS |
+| 309 | daily-goal/celebration-visible | 完成后约 450ms 显示 #celebrate（hidden=false，class 含 show，淡入后 opacity≥0.9） | true | shown=true, hidden=false, show=true, opacity=1 | PASS |
+| 310 | daily-goal/celebration-aria-hidden | #celebrate 的 aria-hidden 为 false | false | false | PASS |
+| 311 | daily-goal/celebration-title | .celebrate-title 文本包含「今日目标达成」 | true | 今日目标达成！ | PASS |
+| 312 | daily-goal/celebration-confetti | .confetti-piece 数量 ≥ 20（应用生成 28 个） | true | confetti=28 | PASS |
+| 313 | daily-goal/celebration-daily-visible | 庆祝期间 #daily 仍可见且计数 20 / 20（填充 100%） | true | hidden=false, count=20 / 20, aria=20, ratio=1.0000 | PASS |
+| 314 | daily-goal/shot-celebration-size | 庆祝特效截图尺寸 | 360x640 | 360x640 | PASS |
+| 315 | daily-goal/free-mode-entered | 约 450+1600+250ms + 切题后进入自由刷题（#daily.hidden 且 #freeMode 显示） | true | 已进入自由刷题 | PASS |
+| 316 | daily-goal/free-mode-text | #freeMode 文本包含「自由刷题」且 #daily 隐藏 | true | text=今日目标已完成 · 自由刷题, dailyHidden=true | PASS |
+| 317 | daily-goal/celebration-hidden-after-free | 进入自由刷题后 #celebrate 已隐藏、彩带已清空 | true | hidden=true, confetti=0 | PASS |
+| 318 | daily-goal/free-mode-question | 自由刷题页面题目等于 v3.currentId 对应题干 | true | currentId=2015-30 | PASS |
+| 319 | daily-goal/shot-free-mode-size | 自由刷题截图尺寸 | 360x640 | 360x640 | PASS |
+| 320 | daily-goal/free-mode-persist-before-answer | 注入 v3 刷新后仍处于自由刷题（#daily 隐藏、#freeMode 显示） | true | dailyHidden=true, freeModeHidden=false | PASS |
+| 321 | daily-goal/free-mode-vibration-record-persists | 刷新后震动记录仍为 [200]（辅助记录用于验证不再新增） | [200] | [200] | PASS |
+| 322 | daily-goal/free-answer-next | 自由刷题继续答对后正常切题 | true | 已切题 | PASS |
+| 323 | daily-goal/free-answer-no-celebration | 自由刷题继续答对不再显示庆祝特效 | true | hidden=true, show=false | PASS |
+| 324 | daily-goal/free-answer-no-vibrate | 自由刷题继续答对不再震动（__vibrations 仍只有 [200]） | [200] | [200] | PASS |
+| 325 | daily-goal/free-answer-daily-unchanged | 自由刷题继续答对不推进每日计数：correct 仍 20、completedAt 不变 | true | daily={"day":"2026-11-19","correct":20,"completedAt":1795096980951}, completedBefore=1795096980951 | PASS |
+| 326 | daily-goal/free-answer-daily-hidden | 自由刷题继续答对后 #daily 仍隐藏、#freeMode 仍显示 | true | dailyHidden=true, freeModeHidden=false | PASS |
+| 327 | daily-goal/free-persist-daily-hidden | 刷新后 #daily 仍隐藏 | true | dailyHidden=true | PASS |
+| 328 | daily-goal/free-persist-free-visible | 刷新后 #freeMode 仍显示「自由刷题」 | true | hidden=false, text=今日目标已完成 · 自由刷题 | PASS |
+| 329 | daily-goal/free-persist-no-celebration | 刷新后无庆祝特效、彩带为空 | true | hidden=true, confetti=0 | PASS |
+| 330 | daily-goal/free-persist-storage | 刷新后存储仍为今天 correct=20、completedAt 不变 | true | daily={"day":"2026-11-19","correct":20,"completedAt":1795096980951} | PASS |
+| 331 | daily-goal/no-console-errors | 每日目标 / 自由刷题流程全程无 console error / warning / pageerror | true | 0 条 | PASS |
+| 332 | daily-midnight/foreground-before-midnight-free-mode | 跨午夜前：当天已完成，#daily 隐藏、#freeMode 显示 | true | dailyHidden=true, freeModeHidden=false | PASS |
+| 333 | daily-midnight/foreground-midnight-reset | 前台跨过本地 00:00 后自动重置为第二天 0 / 20 并重新显示进度条 | true | count=0 / 20, dailyHidden=false, freeModeHidden=true, daily={"day":"2026-11-20","correct":0,"completedAt":null}, today=2026-11-20 | PASS |
+| 334 | daily-midnight/celebration-across-midnight-visible | 第 20 题答对后显示庆祝特效（跨午夜前） | true | hidden=false, show=true | PASS |
+| 335 | daily-midnight/celebration-across-midnight-reset | 特效期间跨过 00:00：特效结束后显示第二天 0 / 20（不再停留在昨天自由刷题） | true | count=0 / 20, dailyHidden=false, freeModeHidden=true, overlayHidden=true, daily={"day":"2026-11-20","correct":0,"completedAt":null}, today=2026-11-20 | PASS |
+| 336 | daily-midnight/no-console-errors | 跨午夜流程无 console error / warning / pageerror | true | 0 条 | PASS |
 
 ## 截图
 
 | 文件 | 视口 | 尺寸 | 大小 |
 |---|---|---|---|
-| 360x640-initial.png | 360x640 | 360×640 | 100.7 KiB |
-| 360x640-feedback.png | 360x640 | 360×640 | 100.0 KiB |
-| 360x640-after-answer.png | 360x640 | 360×640 | 103.8 KiB |
-| 360x640-resume.png | 360x640 | 360×640 | 103.8 KiB |
-| 360x640-feedback-wrong.png | 360x640 | 360×640 | 125.4 KiB |
-| 360x640-feedback-correct.png | 360x640 | 360×640 | 100.1 KiB |
-| 360x640-long-question.png | 360x640 | 360×640 | 170.5 KiB |
-| 360x640-long-stem.png | 360x640 | 360×640 | 141.7 KiB |
-| 360x640-double-click.png | 360x640 | 360×640 | 107.5 KiB |
-| 412x915-initial.png | 412x915 | 412×915 | 156.3 KiB |
-| 412x915-feedback.png | 412x915 | 412×915 | 155.4 KiB |
-| 412x915-after-answer.png | 412x915 | 412×915 | 146.8 KiB |
-| 412x915-resume.png | 412x915 | 412×915 | 146.8 KiB |
-| 412x915-feedback-wrong.png | 412x915 | 412×915 | 175.7 KiB |
-| 412x915-feedback-correct.png | 412x915 | 412×915 | 145.8 KiB |
-| 412x915-long-question.png | 412x915 | 412×915 | 256.9 KiB |
-| 412x915-long-stem.png | 412x915 | 412×915 | 192.7 KiB |
-| 412x915-double-click.png | 412x915 | 412×915 | 149.7 KiB |
+| 360x640-initial.png | 360x640 | 360×640 | 105.7 KiB |
+| 360x640-feedback.png | 360x640 | 360×640 | 105.3 KiB |
+| 360x640-after-answer.png | 360x640 | 360×640 | 103.5 KiB |
+| 360x640-resume.png | 360x640 | 360×640 | 103.5 KiB |
+| 360x640-feedback-wrong.png | 360x640 | 360×640 | 126.1 KiB |
+| 360x640-feedback-correct.png | 360x640 | 360×640 | 102.7 KiB |
+| 360x640-long-question.png | 360x640 | 360×640 | 162.3 KiB |
+| 360x640-long-stem.png | 360x640 | 360×640 | 143.0 KiB |
+| 360x640-double-click.png | 360x640 | 360×640 | 104.5 KiB |
+| 412x915-initial.png | 412x915 | 412×915 | 167.8 KiB |
+| 412x915-feedback.png | 412x915 | 412×915 | 167.1 KiB |
+| 412x915-after-answer.png | 412x915 | 412×915 | 162.6 KiB |
+| 412x915-resume.png | 412x915 | 412×915 | 162.6 KiB |
+| 412x915-feedback-wrong.png | 412x915 | 412×915 | 177.9 KiB |
+| 412x915-feedback-correct.png | 412x915 | 412×915 | 147.9 KiB |
+| 412x915-long-question.png | 412x915 | 412×915 | 259.0 KiB |
+| 412x915-long-stem.png | 412x915 | 412×915 | 194.0 KiB |
+| 412x915-double-click.png | 412x915 | 412×915 | 147.5 KiB |
+| daily-goal-celebration.png | 360x640 | 360×640 | 119.0 KiB |
+| daily-goal-free-mode.png | 360x640 | 360×640 | 115.2 KiB |
 
 ## v3 状态与集成断言
 
@@ -309,7 +390,7 @@
 
 ## 交互与非功能断言
 
-- 界面只有题目 + 类别小字 + 4 个选项，无 `#progress` 题号文字、无 `.bar` 进度条。
+- 界面为题目 + 类别小字 + 4 个选项 + 每日目标进度条（`#daily`）；答对 20 题后进度条替换为「今日目标已完成 · 自由刷题」提示（`#freeMode`）。旧版 `#progress` 题号文字 / `.bar` 进度条仍校验为不存在。
 - 题目下方 `#questionType` 灰色小字显示 `类别：<type>`：校验文本与当前题 `type` 一致、字号 ≤ 14px、颜色为灰色系，并随切题更新。
 - 对错反馈：正确项 `.correct` 绿色边框、选错项 `.wrong` 红色边框（同时校验计算样式 RGB）；答对约 600ms 后自动淡出/淡入切到下一题。
 - 答错解析：答错后 `#explain` 展开题库 `explain` 文本（`**加粗**` 已渲染为 `<strong>`，不显示字面量）；600ms 反馈结束后出现“轻触继续”，页面不自动切题；轻触后淡出切到下一题；答对时不显示解析。
@@ -317,9 +398,18 @@
 - 键盘：`A` 与 `2` 键均可选答，反馈与 v3 落盘正确。
 - 长题干 / 长选项正常换行、无横向溢出；内容最多的前 3 道题在小屏可滚动到底、末选项可见。
 
+## 每日目标 / 自由刷题
+
+- 独立 browser context（360×640）全新加载：`#daily` 可见、`#dailyCount` 为 `0 / 20`、`#dailyFill` 宽度 0、`#dailyTrack[aria-valuenow=0]`、`#freeMode` 隐藏；`localStorage["astroQuizDaily.v1"]` 为今天 `{ correct: 0, completedAt: null }`，`AstroDaily.DAILY_GOAL === 20`。
+- 答对推进到 `1 / 20`（填充约 5%）、答错不推进；刷新后计数持久化；写入昨天的 `20 / 20` 后刷新自动重置为今天的 `0 / 20`。
+- 完成目标：注入 `19 / 20` 后答对第 20 题 → 立即调用 `navigator.vibrate(200)` 一次（通过 init script 覆写并记录到 `window.__vibrations`）、存储 `correct=20` 且 `completedAt` 为数字；随后 `#celebrate` 以 `.show` / `aria-hidden="false"` 显示，含「今日目标达成！」与 28 个 `.confetti-piece`；停留约 1.6s 后淡出。彩带截图使用 `animations: "allow"` 以保留 CSS 动画。
+- 自由刷题：`#daily` 隐藏、`#freeMode` 显示「今日目标已完成 · 自由刷题」、`#celebrate` 隐藏且彩带清空、页面题目等于 `v3.currentId` 对应题干；继续答对不再震动 / 不再出特效 / 不再推进计数，刷新后自由刷题状态保持。
+- 两个视口内的每日计数按场景累计（natural 1 + right 1 + recent 12 + double-click 3 + keyboard 2 = 19），用于验证未达 20 时不会误触发完成特效；冷启动独立 context 16 题全对后为 `16 / 20`。
+- 跨午夜（`page.clock` 模拟本地时间）：① 应用停在前台、已完成当天目标时跨过 00:00，自动重置为第二天 `0 / 20` 并重新显示进度条；② 第 20 题庆祝特效播放期间跨过 00:00，特效结束后显示第二天 `0 / 20`（不会停留在昨天的自由刷题）。
+
 ## 控制台错误 / 页面异常 / 请求失败
 
-无（两个视口全程 0 条 console error / warning / pageerror / requestfailed）。
+无（两个视口 + 每日目标独立 context + 跨午夜 context 全程 0 条 console error / warning / pageerror / requestfailed）。
 
 ## www/ 外部 URL 检查
 
@@ -336,19 +426,23 @@ grep 检查 `www/*.html|css|js|json` 中 `http://` / `https://`：0 处，全部
 
 | 视口 | 题 ID | innerHeight | scrollHeight | quizTop | 最大 scrollY | 末选项底部 | 结果 |
 |---|---|---|---|---|---|---|---|
-| 360x640 | 2020-29 | 640 | 889 | 0.0 | 249 | 616.1 | PASS |
-| 360x640 | 2017-21 | 640 | 640 | 30.5 | 0 | 609.5 | PASS |
-| 360x640 | 2017-37 | 640 | 640 | 46.5 | 0 | 593.5 | PASS |
-| 412x915 | 2020-29 | 915 | 915 | 51.9 | 0 | 863.1 | PASS |
-| 412x915 | 2017-21 | 915 | 915 | 160.8 | 0 | 754.2 | PASS |
-| 412x915 | 2017-37 | 915 | 915 | 178.4 | 0 | 736.6 | PASS |
+| 360x640 | 2020-29 | 640 | 938 | 24.0 | 298 | 616.1 | PASS |
+| 360x640 | 2017-21 | 640 | 676 | 24.0 | 36 | 616.0 | PASS |
+| 360x640 | 2017-37 | 640 | 644 | 24.0 | 4 | 616.0 | PASS |
+| 412x915 | 2020-29 | 915 | 915 | 25.4 | 0 | 889.6 | PASS |
+| 412x915 | 2017-21 | 915 | 915 | 134.3 | 0 | 780.7 | PASS |
+| 412x915 | 2017-37 | 915 | 915 | 151.9 | 0 | 763.1 | PASS |
 
 ## 未验证项 / 限制
 
 - 仅桌面无头 Chromium 的 file:// 环境，未覆盖真机 Android WebView 与 Capacitor SystemBars 注入的 safe-area（本机模拟器不可用）。
+- 真机震动（`navigator.vibrate` + AndroidManifest 的 `VIBRATE` 权限）与「目标达成」全屏特效在 Android WebView 的实际表现未验证；无头 Chromium 中仅通过覆写 `navigator.vibrate` 记录调用参数与次数，桌面环境不会真实震动。
+- 真机彩带 / 发光动画的帧率与低端机掉帧情况未验证；无头 Chromium 只校验 DOM（`.celebrate.show`、28 个 `.confetti-piece`）与截图，不等价于真机动画观感。
 - 未验证 APK 包内资源、Android 启动页与系统栏在真机上的实际渲染（包内资源由打包步骤用 unzip/aapt2 静态校验）。
 - 未验证屏幕阅读器无障碍；键盘仅验证 `A` / `2` 两条路径（代码路径与 A-D / 1-4 同一处理）。
 - 未验证低端设备动画掉帧、真机触屏长按/双击缩放行为。
+- 未覆盖 localStorage 损坏 / 被禁用 / 配额已满等异常降级：代码有 try/catch（进度仅内存、刷新后可能回退），浏览器验收未注入这类异常。
+- 未覆盖屏幕阅读器对进度条 / 完成特效的播报与焦点管理；ARIA 属性（role=progressbar、aria-valuenow/max）只做静态断言。
 - `@media (hover:hover)` 触屏分支无法在桌面无头 Chromium 中真实复现（依赖 isMobile/hasTouch 模拟）。
 - 自适应差异（低掌握度类型更常出现、softmax 抽样等）不在浏览器验收中做随机断言，由单元测试与四场景模拟覆盖。
 - README 所述“冷启动因到期复习插入而偏移”的异常路径未在浏览器验收中确定性复现（依赖随机题目与到期时间）；浏览器只验证无到期复习时的理想轮转，偏移场景由单元测试 / 模拟覆盖。

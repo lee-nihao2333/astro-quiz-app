@@ -3,7 +3,8 @@
 一个纯前端（HTML / CSS / JavaScript）的天文知识竞赛刷题应用，使用 Capacitor 8 打包成离线 Android APK。
 
 - 题库：2009–2020 年共 12 个文件、485 道题
-- 模式：**自适应刷题**，没有进度条、没有题号进度，界面只有题目、类别小字和 4 个选项
+- 模式：**自适应刷题 + 每日目标**。题目上方显示「今日目标」进度条（答对 0 / 20），达标后自动进入**自由刷题**（隐藏进度条，可继续无限刷题）
+- 每日目标：每天需答对 **20** 道题，答错不推进；完成时手机震动一下并播放彩带 + 发光特效；第二天自动从 0 / 20 重新开始
 - 交互：点击选项后先显示约 0.6 秒对错反馈（正确项绿、选错项红）；答对自动进入下一题，答错展示该题解析并轻触继续
 - 出题：按 Leitner 到期复习 + 掌握度 + 类型优先级 softmax 自适应选题；同一类型最多连续 3 题，最近 10 题不重复
 - 续做：当前题目与作答记录保存在 `localStorage`（v3），关闭应用再打开会从上次位置继续；v1 / v2 旧数据自动迁移且原数据保留
@@ -21,7 +22,8 @@
 ├── src/                      # 网页源码（唯一前端源码目录）
 │   ├── index.html
 │   ├── style.css
-│   ├── app.js                # 界面、作答流程、v3 状态与旧版迁移
+│   ├── app.js                # 界面、作答流程、每日目标界面、v3 状态与旧版迁移
+│   ├── daily.js              # 每日目标纯函数模块（零依赖 UMD，浏览器/Node 双用）
 │   └── selector.js           # 自适应出题选择器（零依赖 UMD，浏览器/Node 双用）
 ├── scripts/
 │   ├── build-web.mjs         # 构建脚本：校验 data/ 并生成 www/
@@ -33,6 +35,7 @@
 ├── qa/                       # 接口契约、单元测试、模拟/验收脚本、报告与截图
 │   ├── CONTRACT.md           # 自适应出题算法接口契约
 │   ├── selector.test.mjs     # 选择器单元测试（node:test）
+│   ├── daily.test.mjs        # 每日目标模块单元测试（node:test）
 │   ├── simulation.md         # 四场景模拟报告（scripts/simulate.mjs 生成）
 │   ├── verify.mjs            # Playwright Web 验收脚本
 │   ├── report.md             # Web 验收报告
@@ -143,6 +146,7 @@ adb install -r dist/astro-quiz-debug.apk
 | 最低 / 目标 SDK | minSdk 24 / targetSdk 36 |
 | Gradle / AGP | 8.14.3 / 8.13.0 |
 | 出题算法 | `src/selector.js`（零依赖 UMD，浏览器 `window.AstroSelector` / Node `require`） |
+| 每日目标 | `src/daily.js`（零依赖 UMD，浏览器 `window.AstroDaily` / Node `require`） |
 
 除 Capacitor 核心包和 Android 平台外，**没有引入任何 Capacitor 插件**。
 
@@ -235,6 +239,7 @@ adb install -r dist/astro-quiz-debug.apk
   - v1：`{ order, index, answers }`
   - 迁移时按旧 `answers` 顺序逐条调用 `applyAnswer` 重建 `q` / `log` / `step`；迁移后 v1 / v2 的原始 key **保留不删**。
 - **已知限制（当前契约零容忍）**：v3 校验要求 `currentId`、`q` 的每个 key、`log` 的每条 `id` 都在当前题库中。题库题目 ID 被修改或删除时，整份 v3 会被判为非法并回退：先尝试 v2 → v1 迁移，都不可用则新建空 v3；这次回退会重置 v3 中的做题进度，但 v1 / v2 原始 key 仍保留。契约目前就是零容忍，不做逐题丢弃/局部修复。
+- 每日目标进度是独立 key `astroQuizDaily.v1`，不写入 v3，因此 v3 迁移 / 回退不会影响当天的每日进度；反过来每日进度跨天重置也不影响做题记录。
 - `due` 依赖设备本地时间；手动修改系统时间会影响复习到期节奏。
 
 ### 答题对错反馈与解析
@@ -245,6 +250,26 @@ adb install -r dist/astro-quiz-debug.apk
 - **答错**：选项下方展开该题 `explain` 解析（`**加粗**` 会渲染为加粗，不显示星号）；反馈结束后出现「轻触继续」，**不会自动切题**，点击/轻触任意处或按任意键后继续。这样解析可以按自己的速度读完。
 - 解析展示与切换期间不响应作答点击，快速连点不会连跳两题。
 - 不显示题目出处，也不显示「答案由 AI 给出」的提示。
+
+### 每日目标与自由刷题
+
+- 每天（以设备**本地日期** 00:00 为界）需要答对 **20** 道题；只有答对推进进度，答错不推进。
+- 题目上方显示「今日目标」进度条与 `N / 20` 计数，进度条按答对比例填充。
+- 答对第 20 题时：
+  - 手机震动一下（`navigator.vibrate(200)`，Android 端需要 `android.permission.VIBRATE` 权限）；
+  - 进度条走满并发光，随后播放彩带 + 发光 +「今日目标达成！」全屏特效（约 2 秒，轻触可提前跳过）；
+  - 特效结束后进入**自由刷题**：隐藏进度条，只显示一行「今日目标已完成 · 自由刷题」，可继续无限刷题；当天不再重复震动或特效。
+- 第二天打开应用（或从后台切回前台）自动重置为 0 / 20，重新显示进度条。
+- 完成后关闭应用再打开，当天仍保持自由刷题状态。
+- 每日进度单独保存在 `localStorage` key `astroQuizDaily.v1`：
+
+  ```js
+  { "day": "2026-11-19", "correct": 20, "completedAt": 1795095318418 }
+  ```
+
+  `correct` 最大为 20；`completedAt` 为首次达标时间戳（未达标为 `null`）；`day` 不是今天时自动重置为 0 / 20。
+- 每日目标与自适应出题互不影响：`astroQuizState.v3`（当前题目与复习状态）逻辑保持不变。
+- 桌面浏览器没有可用的震动 API 时静默跳过，进度条与特效照常工作。
 
 ### 手机适配要点
 
@@ -283,26 +308,30 @@ npx @capacitor/assets generate --android
 # 1. 选择器单元测试（node:test，覆盖 box/due、到期复习、冷启动、连击、最近 10、AI 权重、不可变性）
 node qa/selector.test.mjs
 
-# 2. 四场景模拟（固定种子 20260101，可重复；生成 qa/simulation.md）
+# 2. 每日目标单元测试（node:test，覆盖 20 题目标、只统计答对、跨天重置、完成态、不可变性）
+node qa/daily.test.mjs
+
+# 3. 四场景模拟（固定种子 20260101，可重复；生成 qa/simulation.md）
 node scripts/simulate.mjs
 # 也可指定种子：node scripts/simulate.mjs 12345
 
-# 3. Web 端浏览器验收（先构建，再用 file:// 打开 www/index.html）
+# 4. Web 端浏览器验收（先构建，再用 file:// 打开 www/index.html）
 npm run build
 node qa/verify.mjs
 ```
 
 - `qa/verify.mjs` 使用本机 Chromium + `playwright-core`，在 **360×640 / 412×915** 两个视口下验证：
   - 等待 app 动态加载 `selector.js` 就绪（`#question` 非空 + v3 出现，最长 5 秒）；
-  - 485 题、无进度 UI、题目下方类别灰色小字（内容/字号/颜色/切题更新）、4 选项、长题干/长选项换行、无横向溢出、内容最多题可滚动到底；
+  - 485 题、题目上方每日目标进度条（初始 0 / 20、只统计答对）、题目下方类别灰色小字（内容/字号/颜色/切题更新）、4 选项、长题干/长选项换行、无横向溢出、内容最多题可滚动到底；
   - 对错反馈（答对绿色自动切题；答错红色 + `explain` 解析 + 轻触继续）、防连点、键盘 A–D / 1–4；
   - 作答后 v3 的 `step / currentId / q[oldId] / log` 正确，且反馈期间已保存下一题；
   - 刷新续做、v2 → v3、v1 → v3 迁移（v1/v2 原 key 保留）、最近 10 题排除；
   - 冷启动类型序列（空状态连续 16 题全部答对时 = `TYPE_ORDER` 每类 2 题）与 v3 零容忍回退（v3 含题库外 id → 整份状态丢弃并按 v2/v1/空状态回退）；
+  - **每日目标 / 自由刷题**：初始 0 / 20、答对推进 / 答错不推进、刷新保持、跨天重置（刷新 + 前台跨午夜 + 特效播放期间跨午夜）；第 20 题触发一次 `navigator.vibrate(200)`（用 init script 记录）、全屏特效与彩带、特效结束后隐藏进度条进入自由刷题、自由刷题继续作答不再震动/弹特效、刷新后保持自由刷题；
   - console / pageerror / 请求失败为 0、`www/` 无外部 URL。
   - 浏览器验收**不做纯随机断言**；掌握度、softmax、Leitner 到期等细节由单元测试与模拟覆盖。
 - `qa/report.md`：最新一次验收的断言明细、截图清单与限制说明。
-- `qa/*.png`：两个视口各 9 张截图（initial / feedback / feedback-wrong（含解析）/ feedback-correct / after-answer / resume / long-question / long-stem / double-click）。
+- `qa/*.png`：两个视口各 9 张截图（initial / feedback / feedback-wrong（含解析）/ feedback-correct / after-answer / resume / long-question / long-stem / double-click），另有每日目标流程 2 张（`daily-goal-celebration.png`、`daily-goal-free-mode.png`）。
 - `qa/simulation.md`：四场景模拟报告（偏科 / 全能 / 新手 / 进步），含类型占比、正确率、复习占比、覆盖率与断言结果。
 
 运行浏览器验收需要本机已有 `playwright-core` 与 Chromium（它们只是开发验收依赖，不是应用运行依赖）。脚本会按常见路径回退，也可用环境变量指定：
@@ -324,6 +353,10 @@ node qa/verify.mjs
 ## 已知限制
 
 - 没有在真机或模拟器上运行过（本机无模拟器设备），系统栏 / 启动页 / 返回键等原生表现需要真机确认
+- **震动与完成特效未在真机 Android WebView 上验证**：`navigator.vibrate(200)` 需要 APK 已声明 `android.permission.VIBRATE`（已加入 AndroidManifest），设备是否支持震动、系统是否允许 WebView 震动需真机确认；桌面浏览器没有震动 API 时静默跳过
+- 每日目标按**设备本地日期**重置；手动修改系统日期 / 时区会直接影响跨天重置时机
+- 每日目标完成后当天一直是自由刷题状态，第二天才重新出现进度条；没有「跳过今日目标」「手动重新挑战」等入口
+- 每日进度与做题进度都依赖 `localStorage`；隐私模式 / 存储被禁用 / 配额已满时写入会被静默忽略，本次运行仍可推进，但刷新后可能回退到上次成功保存的状态
 - 超长题目在 360×640 小屏上需要上下滚动才能看全选项（文字会正常换行，不会横向溢出）
 - 自适应出题是「按算法调度」而不是把所有题过一遍；同一道题会在到期后再次出现，最近 10 题内不会重复
 - 冷启动「每类 2 题」是**尽力而为**：到期复习优先，前 16 题内出现到期复习时类型轮转可能偏移（CONTRACT 已裁决，不是 bug）
@@ -332,4 +365,4 @@ node qa/verify.mjs
 - **题库题目 ID 变更/删除会导致整份 v3 校验失败并回退**（当前按契约零容忍）：v3 判非法后按 v2 → v1 → 空状态回退，v3 中的做题进度可能被重置；v1 / v2 原始数据保留
 - 复习到期时间依赖设备本地时间；手动改系统时间会影响复习节奏
 - `log` 最多保留 500 条；`q` 会保留所有做过的题的累计统计
-- 浏览器验收只覆盖桌面无头 Chromium 的 file:// 环境；真机 Android WebView / safe-area 表现需真机确认
+- 浏览器验收只覆盖桌面无头 Chromium 的 file:// 环境；真机 Android WebView / safe-area / 震动的表现需真机确认

@@ -21,6 +21,8 @@
 **不能修改**：`data/`、`src/index.html`、`android/`、`capacitor.config.json`、`package.json`、`package-lock.json`、其他人的文件。
 （注意：`src/index.html` 不在允许修改清单中。E 必须在 `src/app.js` 里**动态加载** `selector.js`，不要改 HTML。）
 
+> **后续变更说明（每日目标功能，2026-11）**：新增「每日目标 + 自由刷题」时已允许并实际修改 `src/index.html`（进度条 / 特效 DOM）与 `android/app/src/main/AndroidManifest.xml`（`VIBRATE` 权限），并新增 `src/daily.js`、`qa/daily.test.mjs`。§0 的“不能修改”清单是算法任务阶段的约束，对每日目标功能不再适用；每日目标契约见 §13。
+
 ## 1. 题库字段与类型顺序
 
 `www/questions.js` 中每题固定字段：
@@ -294,7 +296,7 @@ UMD 形式，**零依赖**，不访问 DOM、不访问 `localStorage`、不自�
 
 ### 8.1 加载 selector
 
-- **不要修改 `src/index.html`**。
+- 自适应算法仍通过 app.js 动态创建 `<script src="selector.js">` 加载；每日目标功能直接修改了 `index.html`（见 §13），与 §0 历史约束的差异见 §0 的后续变更说明。
 - app.js 先创建 `<script src="selector.js">` 插入 `document.head`，`onload` 后再执行应用初始化；`onerror` 时显示“题库加载失败”并 `console.error`。
 - 初始化时读取 `window.AstroSelector`；缺失则报错退出。
 - 启动时校验题库每道题：`typeof id/q/options/answer` 合法、`type` 在 `TYPE_ORDER`、`explain` 是非空字符串、`typeof ai === "boolean"`。任一不满足：`console.error` 并显示“题库加载失败”，不要静默通过。
@@ -335,7 +337,7 @@ showFeedback(item.answer, choice);
 - 保留 600ms 反馈、150ms 淡出/淡入、锁定点击、键盘 A/B/C/D 与 1–4。
 - **答对**：600ms 后自动淡出切下一题。
 - **答错**：在选项下方展开题库 `explain`（`**加粗**` 安全渲染为 `<strong>`，不显示星号）；600ms 反馈后显示“轻触继续”，不自动切题，点击任意处/按任意键后淡出切下一题。解析内容视为纯文本，必须转义/用 textContent 构建，不能直接 innerHTML。
-- **界面不增加进度/统计/类型/box 等算法信息**；解析面板仅在答错时出现。
+- **界面不增加算法/box 信息**；解析面板仅在答错时出现。每日目标进度条、`N / 20`、完成特效与自由刷题提示是产品需求，允许显示（见 §13）。
 - 动态加载 selector 期间可以没有题目文本，但不要新增加载提示文字。
 
 ## 9. 单元测试（`qa/selector.test.mjs`，C 负责）
@@ -397,11 +399,12 @@ showFeedback(item.answer, choice);
 
 - 等待 app 动态加载 selector 完成（例如轮询 `#question` 文本非空 / localStorage v3 出现，最多 5 秒）。
 - 去掉“纯随机”断言；保留/更新：
-  - 布局、无进度 UI、4 选项、长题换行、无横向溢出、对错反馈、防连点、键盘（可保留）、console/网络错误、www 无外部 URL；
+  - 布局、每日目标进度条（答对推进、完成后隐藏并进入自由刷题）、4 选项、长题换行、无横向溢出、对错反馈、防连点、键盘（可保留）、console/网络错误、www 无外部 URL；
+  - 每日目标：初始 0/20、答错不推进、刷新保持、跨天重置、第 20 题震动一次 + 特效、完成后自由刷题不再触发；每日模块纯函数由 `qa/daily.test.mjs` 覆盖；
   - 作答后 v3 `q[id]` 存在且 `log` 最后一条匹配（id/type/ok/step），`currentId` 变化；
   - v1→v3、v2→v3 迁移检查，且迁移后 v1/v2 key 仍在；
   - 最近 10 题不重复选择（可从 log 验证连续题不相同；自适应算法细节由单测/模拟覆盖）。
-- 重新生成 `qa/report.md` 与两个视口的截图（文件名沿用现有，例如 `360x640-initial.png` 等）。
+- 重新生成 `qa/report.md` 与两个视口的截图（文件名沿用现有，例如 `360x640-initial.png` 等，并增加每日目标流程截图 `daily-goal-celebration.png`、`daily-goal-free-mode.png`）。
 - 更新 `README.md`：自适应规则、CONFIG 每个参数含义、如何运行模拟/测试。
 
 ## 12. 交付与提交（协调者）
@@ -412,3 +415,51 @@ showFeedback(item.answer, choice);
   3. 应用接入和迁移（`src/app.js`）；
   4. 模拟与验收文档（`scripts/simulate.mjs`、`qa/simulation.md`、`qa/verify.mjs`、`qa/report.md`、`qa/*.png`、`README.md`）。
 - **不要 push**。
+
+## 13. 每日目标 / 自由刷题契约（`src/daily.js` + app 接入）
+
+> 本节是 2026-11 新增功能（在自适应算法之上）的补充契约；与 §8.3 历史“界面不增加进度”描述的差异以本节为准。
+
+### 13.1 规则
+
+- 每天（设备**本地日期** 00:00 为界）需答对 **20** 道题（`DAILY_GOAL = 20`）；只有答对推进，答错不推进。
+- 进度 = `min(当天答对次数, 20)`；达到 20 后当天进入**自由刷题**：隐藏进度条，继续答题不推进计数、不再触发完成特效 / 震动。
+- 跨天（本地日期变化）自动重置为 0 / 20：刷新、从后台回前台、前台跨过 00:00（定时器）、完成特效播放期间跨过 00:00（特效结束后）都要重置。
+- 每日进度独立于 v3：不写入/不修改 `astroQuizState.v3`，v3 迁移或回退不影响每日进度。
+
+### 13.2 纯函数模块 `src/daily.js`（UMD）
+
+浏览器 `window.AstroDaily`，Node `require`；不访问 DOM / 存储 / 系统时钟 / 随机数，时间只使用入参 `now`（毫秒时间戳）。
+
+```js
+DAILY_GOAL = 20
+STORAGE_KEY = "astroQuizDaily.v1"
+dayKey(now) -> "YYYY-MM-DD"                  // 设备本地日期；非法/超范围 now 抛 TypeError
+emptyDaily(now) -> { day, correct: 0, completedAt: null }
+normalizeDaily(state, now) -> state          // 跨天/非法自动重置；correct 夹到 [0, 20]
+recordAnswer(state, ok, now) -> { state, changed, completedNow }
+progress(state) -> { correct, goal, ratio, completed }
+isCompleted(state) -> boolean
+```
+
+- `recordAnswer` 只统计 `ok === true`；`ok` 非 boolean 抛 TypeError；不修改入参。
+- `completedNow` 仅在本次作答使 `correct` 从 19 → 20 时为 true（用于只庆祝一次）。
+- 存储结构：`{ "day": "YYYY-MM-DD", "correct": 0..20, "completedAt": number|null }`；`completedAt` 为首次达标时间戳。
+- 单测：`qa/daily.test.mjs`（`node:test`），29+ 用例覆盖常量、本地日期、跨天、归一化、只统计答对、完成态、不可变性。
+
+### 13.3 DOM 与交互契约
+
+- `#daily`：进度条容器；未完成时可见，自由刷题时 `hidden`。
+  - `#dailyCount`：`"N / 20"`。
+  - `#dailyTrack`：`role="progressbar"`，`aria-valuemin=0`、`aria-valuemax=goal`、`aria-valuenow=correct`、`aria-valuetext="今日答对 N / 20"`。
+  - `#dailyFill`：宽度 = `correct / goal * 100%`，带 CSS 过渡。
+- `#freeMode`：自由刷题提示（文本「今日目标已完成 · 自由刷题」），完成且不在特效中时可见。
+- `#celebrate`：全屏完成特效容器（初始 `hidden`）；显示时 `hidden=false`、class 含 `show`、`aria-hidden="false"`，内部 `.celebrate-title` 含「今日目标达成！」、`.confetti-piece` 由 JS 生成 28 个。
+- 完成时序（常量在 `src/app.js`）：
+  1. 第 20 题答对：立即 `navigator.vibrate(200)`（需 Android `VIBRATE` 权限）、进度条到 100%、`saveDaily`；
+  2. `CELEBRATE_DELAY_MS = 450` 后显示特效；
+  3. `CELEBRATE_HOLD_MS = 1600` 后淡出，`CELEBRATE_FADE_MS = 250`；
+  4. 淡出完成 → 隐藏 `#daily`、显示 `#freeMode`、切下一题。
+- 特效期间轻触 `#celebrate` 可提前结束（仍走淡化与切题）；特效期间锁定作答。
+- 桌面无 `navigator.vibrate` 时静默跳过；Android WebView 实际震动需真机验证。
+- 验收：`qa/verify.mjs` 的 `testDailyGoal`（0→20、震动、特效、自由刷题、刷新保持）、`testDailyMidnight`（前台跨午夜、特效期间跨午夜）、两个视口的累计计数断言；截图 `qa/daily-goal-celebration.png`、`qa/daily-goal-free-mode.png`。
