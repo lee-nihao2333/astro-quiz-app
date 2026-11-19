@@ -7,7 +7,7 @@
  * 3. 校验每道题（题干、4 个选项、答案下标、题目唯一 ID、type 属于 TYPE_ORDER）；
  * 4. 清空并重新生成 www/，复制 src/，并生成 www/questions.js
  *    （内容为 window.QUESTION_BANK = [...]，每题含 { id, q, options, answer,
- *    type, ai }，不依赖 fetch）；
+ *    type, explain, ai }，不依赖 fetch）；
  * 5. 构建成功时按 TYPE_ORDER 打印全部 8 类的题数与总数。
  *
  * 任一条校验失败都会以非 0 退出码结束，并指出出问题的文件与题号。
@@ -144,6 +144,12 @@ function assertQuestion(item, file, index, seenIds, typeOrder) {
     );
   }
 
+  if (typeof item.explain !== "string" || item.explain.trim() === "") {
+    fail(
+      `${where}：explain 必须是非空字符串（用户答错时展示的解析）`
+    );
+  }
+
   const year = file.replace(/\.json$/i, "");
   if (!/^\d{4}$/.test(year)) {
     fail(`data/${file}：文件名必须是 4 位年份（如 2014.json）`);
@@ -160,6 +166,7 @@ function assertQuestion(item, file, index, seenIds, typeOrder) {
     options: item.options,
     answer: item.answer,
     type: item.type,
+    explain: item.explain,
     ai: item.answerSource === "ai",
   };
 }
@@ -230,7 +237,7 @@ function main() {
   }
   console.log(`[build]   合计：${bank.length} 题`);
 
-  console.log(`[build] ✓ 已生成 www/（${bank.length} 题，离线可用）`);
+  console.log(`[build] ✓ 已生成 www/（${bank.length} 题，含解析，离线可用）`);
 }
 
 main();
