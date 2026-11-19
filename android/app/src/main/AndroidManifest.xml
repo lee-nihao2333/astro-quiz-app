@@ -32,4 +32,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 每日目标达成时震动一下：Android WebView 的 navigator.vibrate 需要该权限 -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

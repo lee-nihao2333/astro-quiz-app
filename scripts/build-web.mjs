@@ -3,12 +3,13 @@
  * 构建脚本：把 src/ 与 data/ 组装成可离线运行的 www/
  *
  * 1. 从 src/selector.js 取得 TYPE_ORDER（单一来源，不复制常量）；
- * 2. 读取 data/index.json 及其中列出的全部题库文件；
- * 3. 校验每道题（题干、4 个选项、答案下标、题目唯一 ID、type 属于 TYPE_ORDER）；
- * 4. 清空并重新生成 www/，复制 src/，并生成 www/questions.js
+ * 2. 校验 src/daily.js（每日目标模块）存在且导出关键 API；
+ * 3. 读取 data/index.json 及其中列出的全部题库文件；
+ * 4. 校验每道题（题干、4 个选项、答案下标、题目唯一 ID、type 属于 TYPE_ORDER）；
+ * 5. 清空并重新生成 www/，复制 src/，并生成 www/questions.js
  *    （内容为 window.QUESTION_BANK = [...]，每题含 { id, q, options, answer,
  *    type, explain, ai }，不依赖 fetch）；
- * 5. 构建成功时按 TYPE_ORDER 打印全部 8 类的题数与总数。
+ * 6. 构建成功时按 TYPE_ORDER 打印全部 8 类的题数与总数。
  *
  * 任一条校验失败都会以非 0 退出码结束，并指出出问题的文件与题号。
  */
@@ -30,6 +31,7 @@ const DATA_DIR = join(ROOT, "data");
 const SRC_DIR = join(ROOT, "src");
 const WWW_DIR = join(ROOT, "www");
 const SELECTOR_PATH = join(SRC_DIR, "selector.js");
+const DAILY_PATH = join(SRC_DIR, "daily.js");
 
 function fail(message) {
   console.error(`\n[build] ✗ ${message}\n`);
@@ -84,6 +86,52 @@ function loadTypeOrder() {
   });
 
   return typeOrder;
+}
+
+/**
+ * 校验 src/daily.js（每日目标模块）：必须存在，且导出 app.js 依赖的 API。
+ * 只做接口存在性检查，具体逻辑由 qa/daily.test.mjs 覆盖。
+ */
+function loadDailyModule() {
+  if (!existsSync(DAILY_PATH)) {
+    fail(
+      "找不到 src/daily.js（每日目标模块）：应导出 window.AstroDaily / module.exports"
+    );
+  }
+  let daily;
+  try {
+    const require = createRequire(import.meta.url);
+    daily = require(DAILY_PATH);
+  } catch (err) {
+    fail(`无法加载 src/daily.js：${err.message}`);
+  }
+  const problems = [];
+  if (!daily || typeof daily !== "object") {
+    problems.push("模块导出不是对象");
+  } else {
+    if (!Number.isInteger(daily.DAILY_GOAL) || daily.DAILY_GOAL < 1) {
+      problems.push("DAILY_GOAL 必须是正整数");
+    }
+    if (typeof daily.STORAGE_KEY !== "string" || daily.STORAGE_KEY === "") {
+      problems.push("STORAGE_KEY 必须是非空字符串");
+    }
+    for (const name of [
+      "dayKey",
+      "emptyDaily",
+      "normalizeDaily",
+      "recordAnswer",
+      "progress",
+      "isCompleted",
+    ]) {
+      if (typeof daily[name] !== "function") {
+        problems.push(`${name} 必须是函数`);
+      }
+    }
+  }
+  if (problems.length > 0) {
+    fail(`src/daily.js 接口不完整：${problems.join("；")}`);
+  }
+  return daily;
 }
 
 /** 统一描述某道题在源文件中的位置，便于报错定位 */
@@ -174,6 +222,8 @@ function assertQuestion(item, file, index, seenIds, typeOrder) {
 function main() {
   // ---- TYPE_ORDER 单一来源：src/selector.js ----
   const typeOrder = loadTypeOrder();
+  // ---- 每日目标模块接口校验 ----
+  const daily = loadDailyModule();
 
   // ---- 读取索引 ----
   const indexPath = join(DATA_DIR, "index.json");
@@ -236,6 +286,10 @@ function main() {
     console.log(`[build]   ${type}：${typeCounts.get(type)} 题`);
   }
   console.log(`[build]   合计：${bank.length} 题`);
+
+  console.log(
+    `[build] 每日目标：答对 ${daily.DAILY_GOAL} 题/天（进度存 ${daily.STORAGE_KEY}）`
+  );
 
   console.log(`[build] ✓ 已生成 www/（${bank.length} 题，含解析，离线可用）`);
 }

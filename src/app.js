@@ -1,9 +1,10 @@
 (function () {
   "use strict";
 
-  // 自适应刷题模式：选题 / 复习算法在 selector.js（src/selector.js）中。
-  // 由于不能修改 index.html，selector.js 在运行时动态插入脚本加载。
-  // 当前题目与作答/复习状态保存在 localStorage（astroQuizState.v3），用于关闭应用后断点续做。
+  // 自适应刷题 + 每日目标：选题 / 复习算法在 selector.js，每日进度在 daily.js。
+  // selector.js 在运行时动态插入脚本加载（daily.js 由 index.html 静态引入）。
+  // 当前题目与作答/复习状态保存在 localStorage（astroQuizState.v3），用于关闭应用后断点续做；
+  // 每日目标进度单独保存在 localStorage（astroQuizDaily.v1）。
   const V3_KEY = "astroQuizState.v3";
   const V2_KEY = "astroQuizState.v2";
   const V1_KEY = "astroQuizState.v1";
@@ -11,6 +12,10 @@
   const FEEDBACK_MS = 600; // 答完后显示对错的时间
   const FADE_MS = 150; // 淡出 / 淡入各自的时长
   const LOAD_FAILED_TEXT = "题库加载失败";
+  const CELEBRATE_DELAY_MS = 450; // 完成目标后，先让进度条走满再弹特效
+  const CELEBRATE_HOLD_MS = 1600; // 特效停留时间
+  const CELEBRATE_FADE_MS = 250; // 特效淡出时间
+  const VIBRATE_MS = 200; // 完成目标时震动一下（毫秒）
 
   const $quiz = document.getElementById("quiz");
   const $question = document.getElementById("question");
@@ -19,16 +24,30 @@
   const $explain = document.getElementById("explain");
   const $explainText = document.getElementById("explainText");
   const $explainHint = document.getElementById("explainHint");
+  const $daily = document.getElementById("daily");
+  const $dailyCount = document.getElementById("dailyCount");
+  const $dailyTrack = document.getElementById("dailyTrack");
+  const $dailyFill = document.getElementById("dailyFill");
+  const $freeMode = document.getElementById("freeMode");
+  const $celebrate = document.getElementById("celebrate");
+  const $celebrateSub = document.getElementById("celebrateSub");
+  const $confetti = document.getElementById("confetti");
 
   let S = null; // window.AstroSelector（selector.js 加载后才有）
+  let D = null; // window.AstroDaily（每日目标模块）
   let bank = null;
   let byId = null;
   let state = null;
+  let daily = null;
   let locked = false;
   let awaitingContinue = false; // 答错后展示解析，等待用户轻触继续
+  let celebrating = false; // 正在播放“今日目标达成”特效
+  let celebrationEnding = false; // 特效正在淡出（防止重复触发）
   let feedbackTimer = 0;
   let swapTimer = 0;
   let unlockTimer = 0;
+  let celebrateTimer = 0;
+  let midnightTimer = 0;
 
   // ---------------- 错误提示 ----------------
 
@@ -37,6 +56,9 @@
     if ($question) $question.textContent = LOAD_FAILED_TEXT;
     if ($questionType) $questionType.textContent = "";
     if ($options) $options.textContent = "";
+    if ($daily) $daily.hidden = true;
+    if ($freeMode) $freeMode.hidden = true;
+    if ($celebrate) $celebrate.hidden = true;
   }
 
   // ---------------- 启动校验（CONTRACT 8.1） ----------------
@@ -113,6 +135,197 @@
     } catch (err) {
       /* 隐私模式 / 存储被禁用时忽略，仍可继续做题 */
     }
+  }
+
+  // ---------------- 每日目标（daily.js） ----------------
+
+  function isDailyApiValid(api) {
+    return (
+      !!api &&
+      typeof api === "object" &&
+      Number.isInteger(api.DAILY_GOAL) &&
+      api.DAILY_GOAL > 0 &&
+      typeof api.STORAGE_KEY === "string" &&
+      api.STORAGE_KEY !== "" &&
+      typeof api.dayKey === "function" &&
+      typeof api.recordAnswer === "function" &&
+      typeof api.normalizeDaily === "function" &&
+      typeof api.progress === "function"
+    );
+  }
+
+  function saveDaily() {
+    try {
+      window.localStorage.setItem(D.STORAGE_KEY, JSON.stringify(daily));
+    } catch (err) {
+      /* 存储不可用时忽略，本次运行仍可推进 */
+    }
+  }
+
+  // 加载并归一化每日状态：跨天 / 非法数据会自动重置为今天 0 / 20。
+  function loadDaily(now) {
+    daily = D.normalizeDaily(readStored(D.STORAGE_KEY), now);
+    saveDaily();
+  }
+
+  // 把内存中的每日状态与「当前时间」对齐（跨天 / 非法数据修复）。
+  // 返回是否发生变化；庆祝特效期间不直接渲染，等特效结束回调再统一渲染。
+  function syncDaily(now) {
+    if (!D || !daily) return false;
+    const result = D.recordAnswer(daily, false, now);
+    daily = result.state;
+    if (!result.changed) return false;
+    saveDaily();
+    return true;
+  }
+
+  // 本地下一个 00:00 还有多少毫秒（用于前台跨天自动重置进度条）。
+  function msUntilNextLocalMidnight(now) {
+    const date = new Date(now);
+    const next = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate() + 1,
+      0,
+      0,
+      0,
+      0
+    );
+    return Math.max(0, next.getTime() - now);
+  }
+
+  // 应用一直停在后台/前台跨过 00:00 时，也要在第二天自动切回 0 / 20。
+  // 定时器可能在后台被系统冻结，回到前台时还会再同步一次（见 visibilitychange）。
+  function scheduleMidnightReset() {
+    clearTimeout(midnightTimer);
+    const delay = msUntilNextLocalMidnight(Date.now()) + 1000;
+    midnightTimer = setTimeout(function () {
+      if (syncDaily(Date.now()) && !celebrating) renderDaily();
+      scheduleMidnightReset();
+    }, delay);
+  }
+
+  // 渲染每日进度：未完成显示进度条；已完成（且不在特效中）显示“自由刷题”小字。
+  function renderDaily() {
+    if (!daily || !$daily) return;
+    const p = D.progress(daily);
+    const freeMode = p.completed && !celebrating;
+    $daily.hidden = freeMode;
+    if ($freeMode) $freeMode.hidden = !freeMode;
+    if ($dailyCount) $dailyCount.textContent = p.correct + " / " + p.goal;
+    if ($dailyFill) $dailyFill.style.width = p.ratio * 100 + "%";
+    if ($dailyTrack) {
+      $dailyTrack.setAttribute("aria-valuemax", String(p.goal));
+      $dailyTrack.setAttribute("aria-valuenow", String(p.correct));
+      $dailyTrack.setAttribute(
+        "aria-valuetext",
+        "今日答对 " + p.correct + " / " + p.goal
+      );
+    }
+    $daily.classList.toggle("complete", p.completed);
+  }
+
+  // 记录一次作答，返回是否「刚好」在本次答对后完成今日目标（用于只庆祝一次）。
+  function recordDaily(ok, now) {
+    const result = D.recordAnswer(daily, ok, now);
+    daily = result.state;
+    if (result.changed) saveDaily();
+    if (result.completedNow) celebrating = true;
+    renderDaily();
+    return result.completedNow;
+  }
+
+  // 手机震动一下：Android WebView 需要 AndroidManifest 的 VIBRATE 权限；
+  // 不支持时静默（桌面浏览器 / 旧设备）。
+  function vibrateOnce() {
+    try {
+      if (typeof navigator.vibrate === "function") {
+        navigator.vibrate(VIBRATE_MS);
+      }
+    } catch (err) {
+      /* 忽略震动失败 */
+    }
+  }
+
+  // 完成特效：彩带 + 发光 + 弹出文字（纯 DOM / CSS，无外部资源）。
+  function buildConfetti() {
+    if (!$confetti) return;
+    $confetti.textContent = "";
+    const colors = [
+      "#7c9cff",
+      "#64e3c0",
+      "#ffd166",
+      "#ff8fab",
+      "#c3b1ff",
+      "#6ee7ff",
+    ];
+    for (let i = 0; i < 28; i += 1) {
+      const piece = document.createElement("i");
+      piece.className = "confetti-piece";
+      piece.style.left = (Math.random() * 100).toFixed(2) + "%";
+      piece.style.background = colors[i % colors.length];
+      piece.style.width = (6 + Math.random() * 6).toFixed(1) + "px";
+      piece.style.height = (8 + Math.random() * 8).toFixed(1) + "px";
+      piece.style.setProperty(
+        "--delay",
+        (Math.random() * 0.45).toFixed(2) + "s"
+      );
+      piece.style.setProperty(
+        "--duration",
+        (1.1 + Math.random() * 0.9).toFixed(2) + "s"
+      );
+      piece.style.setProperty(
+        "--drift",
+        (Math.random() * 160 - 80).toFixed(0) + "px"
+      );
+      piece.style.setProperty(
+        "--spin",
+        (Math.random() * 720 - 360).toFixed(0) + "deg"
+      );
+      $confetti.appendChild(piece);
+    }
+  }
+
+  function startCelebration() {
+    if (!celebrating) return;
+    if (!$celebrate) {
+      finishCelebration();
+      return;
+    }
+    celebrationEnding = false;
+    if ($celebrateSub) {
+      const p = D.progress(daily);
+      $celebrateSub.textContent =
+        p.correct + " / " + p.goal + " · 已进入自由刷题";
+    }
+    $celebrate.hidden = false;
+    // 读取一次布局，确保 opacity / transform 过渡从初始状态开始
+    void $celebrate.offsetWidth;
+    $celebrate.classList.add("show");
+    $celebrate.setAttribute("aria-hidden", "false");
+    buildConfetti();
+    clearTimeout(celebrateTimer);
+    celebrateTimer = setTimeout(finishCelebration, CELEBRATE_HOLD_MS);
+  }
+
+  function finishCelebration() {
+    if (!celebrating || celebrationEnding) return;
+    celebrationEnding = true;
+    clearTimeout(celebrateTimer);
+    if ($celebrate) {
+      $celebrate.classList.remove("show");
+      $celebrate.setAttribute("aria-hidden", "true");
+    }
+    celebrateTimer = setTimeout(function () {
+      celebrating = false;
+      celebrationEnding = false;
+      if ($celebrate) $celebrate.hidden = true;
+      if ($confetti) $confetti.textContent = "";
+      // 特效可能跨越本地 00:00：结束时再对齐一次日期，避免继续显示昨天的“自由刷题”
+      syncDaily(Date.now());
+      renderDaily(); // 隐藏进度条，切换为“自由刷题”（或跨天后重新显示 0 / 20）
+      goToNext();
+    }, CELEBRATE_FADE_MS);
   }
 
   function isValidV3(value) {
@@ -260,6 +473,17 @@
     }
     S = api;
 
+    const dailyApi = window.AstroDaily;
+    if (!dailyApi) {
+      showLoadFailure("daily.js 加载失败，window.AstroDaily 缺失");
+      return;
+    }
+    if (!isDailyApiValid(dailyApi)) {
+      showLoadFailure("window.AstroDaily 接口不完整");
+      return;
+    }
+    D = dailyApi;
+
     bank = window.QUESTION_BANK;
     const bankProblem = validateBank(bank);
     if (bankProblem) {
@@ -303,6 +527,9 @@
       saveState(); // 迁移 / 新建后立即写 v3；v1、v2 原数据保留
     }
 
+    loadDaily(now);
+    renderDaily();
+    scheduleMidnightReset();
     render();
   }
 
@@ -433,13 +660,20 @@
     // 先落盘（含下一题 currentId），反馈 / 切换期间退出也不会丢进度
     saveState();
 
+    // 只有答对才推进每日目标；第 20 题会触发震动 + 完成特效，随后进入自由刷题
+    const completedNow = recordDaily(ok, now);
+
     // 先显示约 600ms 的对错反馈：
     // 答对 → 自动切下一题；答错 → 展开解析，等待用户轻触继续。
+    // 完成今日目标 → 先走满进度条，再播放特效，结束后进入自由刷题。
     showFeedback(item.answer, choice);
     clearTimeout(feedbackTimer);
     clearTimeout(swapTimer);
     clearTimeout(unlockTimer);
-    if (ok) {
+    if (completedNow) {
+      vibrateOnce();
+      feedbackTimer = setTimeout(startCelebration, CELEBRATE_DELAY_MS);
+    } else if (ok) {
       feedbackTimer = setTimeout(goToNext, FEEDBACK_MS);
     } else {
       setExplanation(item.explain);
@@ -453,6 +687,24 @@
   // 解析展示期间：点击任意处 / 按任意键继续（捕获阶段先于作答快捷键）
   document.addEventListener("pointerdown", continueAfterExplanation, true);
   document.addEventListener("keydown", continueAfterExplanation, true);
+
+  // 完成特效展示期间：轻触可提前跳过（仍会淡出后进入自由刷题）
+  if ($celebrate) {
+    $celebrate.addEventListener("pointerdown", function (event) {
+      if (!celebrating) return;
+      if (event.cancelable) event.preventDefault();
+      finishCelebration();
+    });
+  }
+
+  // 从后台回到前台时检查跨天：第二天打开应重新显示 0 / 20 的进度条。
+  // 庆祝特效期间也同步日期（但不立即渲染，避免把特效中的 20 / 20 提前换掉）；
+  // 同时重置 00:00 定时器，防止后台冻结导致的旧计时。
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "visible" || !daily || !D) return;
+    if (syncDaily(Date.now()) && !celebrating) renderDaily();
+    scheduleMidnightReset();
+  });
 
   // 桌面/外接键盘快捷作答（A/B/C/D 或 1/2/3/4），界面不展示任何额外文字
   document.addEventListener("keydown", function (event) {
