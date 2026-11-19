@@ -14,6 +14,7 @@
 
   const $quiz = document.getElementById("quiz");
   const $question = document.getElementById("question");
+  const $questionType = document.getElementById("questionType");
   const $options = document.getElementById("options");
   const $explain = document.getElementById("explain");
   const $explainText = document.getElementById("explainText");
@@ -34,6 +35,7 @@
   function showLoadFailure(detail) {
     console.error("[app] " + detail);
     if ($question) $question.textContent = LOAD_FAILED_TEXT;
+    if ($questionType) $questionType.textContent = "";
     if ($options) $options.textContent = "";
   }
 
@@ -318,6 +320,7 @@
     }
     hideExplanation();
     $question.textContent = item.q;
+    $questionType.textContent = "类别：" + item.type;
 
     $options.textContent = "";
     item.options.forEach(function (text, choice) {

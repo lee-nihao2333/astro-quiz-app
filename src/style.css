@@ -101,13 +101,21 @@ body::before {
 }
 
 .question {
-  min-height: 70px;
-  margin-bottom: 32px;
+  margin-bottom: 10px;
   font-size: 22px;
   font-weight: 500;
   line-height: 1.6;
   overflow-wrap: break-word;
   word-break: break-word;
+}
+
+/* 题目类别：题目下方灰色小字 */
+.question-type {
+  margin-bottom: 26px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  color: var(--muted);
 }
 
 .options {
@@ -228,8 +236,13 @@ body::before {
 /* 小屏收紧一点间距，保证 360×640 能完整显示 */
 @media (max-width: 380px) {
   .question {
-    margin-bottom: 26px;
+    margin-bottom: 8px;
     font-size: 20px;
+  }
+
+  .question-type {
+    margin-bottom: 22px;
+    font-size: 12px;
   }
 
   .option {
