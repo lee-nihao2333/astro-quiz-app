@@ -3,10 +3,10 @@
 一个纯前端（HTML / CSS / JavaScript）的天文知识竞赛刷题应用，使用 Capacitor 8 打包成离线 Android APK。
 
 - 题库：2009–2020 年共 12 个文件、485 道题
-- 模式：**无限刷题**，没有进度条、没有题号进度，界面只有题目和 4 个选项
-- 交互：点击选项后先显示约 0.6 秒对错反馈（正确项绿、选错项红），再随机抽下一题
-- 出题：每次作答后从全部 485 道题里随机抽下一题（避免连续两题相同），可以一直刷下去
-- 续做：当前题目与作答记录保存在 `localStorage`，关闭应用再打开会从上次位置继续
+- 模式：**自适应刷题**，没有进度条、没有题号进度，界面只有题目和 4 个选项
+- 交互：点击选项后先显示约 0.6 秒对错反馈（正确项绿、选错项红），再切换到下一题
+- 出题：按 Leitner 到期复习 + 掌握度 + 类型优先级 softmax 自适应选题；同一类型最多连续 3 题，最近 10 题不重复
+- 续做：当前题目与作答记录保存在 `localStorage`（v3），关闭应用再打开会从上次位置继续；v1 / v2 旧数据自动迁移且原数据保留
 - 离线：所有资源都在本地，不引用 CDN、网络字体或任何外部 URL
 
 ## 项目结构
@@ -21,14 +21,22 @@
 ├── src/                      # 网页源码（唯一前端源码目录）
 │   ├── index.html
 │   ├── style.css
-│   └── app.js
+│   ├── app.js                # 界面、作答流程、v3 状态与旧版迁移
+│   └── selector.js           # 自适应出题选择器（零依赖 UMD，浏览器/Node 双用）
 ├── scripts/
 │   ├── build-web.mjs         # 构建脚本：校验 data/ 并生成 www/
+│   ├── simulate.mjs          # 自适应算法四场景模拟，生成 qa/simulation.md
 │   └── generate-assets.py    # 用 PIL 绘制图标 / 启动页原图
 ├── assets/                   # 图标、启动页原图（@capacitor/assets 的输入）
 ├── www/                      # 构建产物（自动生成，已 gitignore）
 ├── android/                  # Capacitor Android 原生工程（提交到 git）
-├── qa/                       # Playwright 验收脚本、报告与截图
+├── qa/                       # 接口契约、单元测试、模拟/验收脚本、报告与截图
+│   ├── CONTRACT.md           # 自适应出题算法接口契约
+│   ├── selector.test.mjs     # 选择器单元测试（node:test）
+│   ├── simulation.md         # 四场景模拟报告（scripts/simulate.mjs 生成）
+│   ├── verify.mjs            # Playwright Web 验收脚本
+│   ├── report.md             # Web 验收报告
+│   └── *.png                 # 两个视口的验收截图
 ├── dist/                     # APK 输出目录（已 gitignore）
 ├── capacitor.config.json
 └── package.json
@@ -42,13 +50,15 @@
   "q": "题干",
   "options": ["A选项", "B选项", "C选项", "D选项"],
   "answer": 1,
+  "type": "恒星与星座",
   "answerSource": "ai"
 }
 ```
 
 - `no`：原卷题号，与年份组成唯一 ID，例如 `2014-12`
 - `answer`：正确选项下标，0=A、1=B、2=C、3=D
-- `answerSource`：可选；值为 `"ai"` 表示答案为 AI 给出（本应用的最小版本不展示该信息）
+- `type`：必填，必须是选择器 `TYPE_ORDER` 的 8 类之一（构建时校验）
+- `answerSource`：可选；值为 `"ai"` 表示答案为 AI 给出。构建后每题带 `ai` 布尔字段，算法中 AI 答案权重为 0.5（界面不展示该信息）
 
 ## 环境要求
 
@@ -98,6 +108,7 @@ dist/astro-quiz-debug.apk
 - `q` 是非空字符串；
 - `options` 恰好 4 个、都是非空字符串；
 - `answer` 是 0–3 之间的整数；
+- `type` 属于 `src/selector.js` 的 `TYPE_ORDER`（8 类）；
 - `年份-题号`（如 `2014-12`）不重复。
 
 `data/` 里的 PDF 与 `conversion-report.md` 不会被打包：构建只读取 `data/index.json` 中列出的 JSON，APK 里只包含 `src/` 与生成的 `questions.js`。
@@ -129,23 +140,100 @@ adb install -r dist/astro-quiz-debug.apk
 | `webDir` | `www` |
 | 最低 / 目标 SDK | minSdk 24 / targetSdk 36 |
 | Gradle / AGP | 8.14.3 / 8.13.0 |
+| 出题算法 | `src/selector.js`（零依赖 UMD，浏览器 `window.AstroSelector` / Node `require`） |
 
 除 Capacitor 核心包和 Android 平台外，**没有引入任何 Capacitor 插件**。
 
-### 无限刷题规则
+### 自适应出题规则
 
-- 界面上没有进度条，也没有「第 N / 485 题」这类题号进度。
-- 每次作答后从全部 485 道题中随机抽下一题，并且不会连续两题抽到同一道。
-- 没有轮次和终点，可以一直刷；同一道题可能在之后的随机中再次出现。
+界面不展示任何算法信息；每次作答后，`app.js` 调用 `src/selector.js` 的 `nextQuestion()` 选下一题。算法契约与测试见 `qa/CONTRACT.md`、`qa/selector.test.mjs`。
 
-### 进度保存
+**1. 到期复习优先（Leitner）**
 
-- `localStorage` key：`astroQuizState.v2`
-- 保存内容：`{ currentId: 当前题目 ID, answers: [{ id, choice }...] }`
-- 每道题 ID 为「年份-题号」，例如 `2014-12`
-- 每次作答先落盘（作答记录 + 随机出的下一题），再播放反馈/切题动画，因此过程中退出也不会丢进度
-- 从旧版 `astroQuizState.v1`（`order` / `index` / `answers`）升级时，会自动迁移到 v2，保留当前题与作答记录
-- 题库变更导致保存的题目 ID 失效时，会自动随机一道新题开始
+- 每个做过的题有熟练度盒子 `box 0–5`；答错进 box 0，新题答对进 box 2，旧题答对升一级，`box 5` 视为「已掌握」。
+- 到期条件：`box 0` 在 `step >= lastStep + 5` 时到期；`box 1–4` 在 `now >= due` 时到期；`box 5` **不参与到期复习**。注意：box 5 只免于「到期复习」，若选中类型内没有新题，第 4 节的类型内排序（`box` 升序，box 5 排最后）仍可能抽到 box 5 的题。
+- 只有最近 20 条 `log` 中「复习题」占比 **< 40%** 时，才优先出到期题；多个到期题按 box 0 优先、`lastStep` / `due` 升序、id 字典序选择。
+- 这个 **`reviewRatio < 0.4` 是最近 20 条 `log` 窗口的局部 gate**（只决定「本轮允不允许出到期复习题」），**不是全局复习题占比上限**。`qa/simulation.md` 里的「已见题占比」（作答前该 id 的 `seen > 0` 的比例）是另一个口径：1000 题跑 485 题题库时它天然 ≥ 51.5%，不代表复习调度超限。二者不可直接比较。
+- 同一类型连续限制同样作用于到期复习：若最近 3 条记录都是同一类型，本轮不复习该类型（宁可暂缓）。
+
+**2. 冷启动**
+
+- 总作答数 `step < 16` 时按 `TYPE_ORDER` 轮转出题：8 个类型各连续 2 题，不做 softmax，也不做同类型连续限制。
+- 「每类 2 题」是**尽力而为**：到期复习优先于冷启动（CONTRACT §6.1 的裁决），若前 16 题内出现到期复习，复习题会插入轮转，类型序列随之偏移，某类可能不是 2 题。这是契约允许的行为，不是 bug。
+
+**3. 掌握度与类型优先级（非冷启动）**
+
+- 类型掌握度 `m`（0–1，初始 0.5）：
+  `m = (2 + Σ w·ok) / (4 + Σ w)`，其中 `w = 0.95^laterSameType`（同类型越早的记录权重越低）；AI 答案再乘 0.5。
+- 类型自然占比 `share = 该类型题数 / 485`。
+- 类型优先级：
+  `priority = (1-m) × sqrt(share) + 0.3 × sqrt(ln(step+1) / (该类型作答数+1))`
+  即「没掌握的类型优先」+「探索得分」。
+- 用 softmax（温度 0.15）按优先级抽样；若最近 3 条记录同类型，则从本轮候选中排除该类型。
+
+**4. 类型内选题**
+
+1. 优先在选中类型中随机选一道没做过的新题；
+2. 否则在类型内按 `box` 升序 → `lastStep` 升序 → id 升序选一道；
+3. 类型内都被最近 10 题排除时，退到全库按 `lastStep` 最小（新题视为 -1）兜底。
+
+> `box 5` 的承诺只有「不参与到期复习」（CONTRACT §3 / §6.1）。类型内没有新题时，上面的 `box` 升序排序（box 5 排最后）或全库兜底仍可能抽到 box 5 的题，这是契约允许的行为。
+
+**5. 防连击 / 防重复**
+
+- `log` 最后 3 条为同一类型时，本次不再出该类型（到期复习同样适用）。
+- 每次选下一题都排除最近 10 题；连续作答不会出现相同题。
+
+**CONFIG 参数（`src/selector.js` 导出）**
+
+| 参数 | 默认值 | 含义 |
+| --- | --- | --- |
+| `coldStartPerType` | `2` | 冷启动时每个类型连续出的题数 |
+| `coldStartTotal` | `16` | 冷启动总题数（8 类 × 2） |
+| `priorCorrect` | `2` | 掌握度公式的先验答对数 |
+| `priorTotal` | `4` | 掌握度公式的先验总分母（2/4 = 初始 0.5） |
+| `decay` | `0.95` | 同类型历史作答的衰减系数（越早权重越低） |
+| `aiWeight` | `0.5` | `ai === true` 的题作答权重 |
+| `exploreCoef` | `0.3` | 类型优先级中探索项的系数 |
+| `examWeightPower` | `0.5` | 自然占比的幂次（等价于开平方，用于平衡题型占比） |
+| `softmaxTemp` | `0.15` | 类型 softmax 温度，越小越偏向高优先级类型 |
+| `maxSameTypeStreak` | `3` | 同一类型最多连续题数 |
+| `recentExclude` | `10` | 最近多少题不重复出现 |
+| `reviewRatioCap` | `0.4` | 最近窗口内复习题占比上限（严格小于才出复习题） |
+| `reviewRatioWindow` | `20` | 计算复习比例的最近记录数 |
+| `intervalsDays` | `[0, 1, 3, 7, 21, 60]` | 各 box 的复习间隔天数（下标即 box） |
+| `box0Steps` | `5` | box 0 经过多少题后到期 |
+| `logLimit` | `500` | `log` 最多保留的作答记录数 |
+
+### 进度保存（v3 状态与迁移）
+
+- `localStorage` key：`astroQuizState.v3`
+- 状态结构：
+  ```js
+  {
+    currentId: "2014-12",        // 当前题目 ID
+    step: 120,                   // 已作答总数（= log 最后一条 step）
+    q: {                         // 只记录做过的题
+      "2014-12": {
+        seen: 3,                 // 做过的总次数
+        wrong: 1,                // 答错次数
+        box: 2,                  // Leitner 熟练度 0–5
+        lastStep: 118,           // 最近一次作答后的 step
+        due: 1763500000000       // 到期时间（ms），box 0 固定为 0
+      }
+    },
+    log: [                       // 最近 500 条，按时间从旧到新
+      { id: "2014-12", type: "恒星与星座", ok: true, step: 118 }
+    ]
+  }
+  ```
+- 每次作答**先写入 v3（含下一题 `currentId`）**，再播放约 600ms 反馈和淡出/淡入，因此反馈期间退出也不会丢进度。
+- 启动顺序：合法 v3 → v2 迁移 → v1 迁移 → 新建空 v3。
+  - v2：`{ currentId, answers: [{ id, choice }] }`
+  - v1：`{ order, index, answers }`
+  - 迁移时按旧 `answers` 顺序逐条调用 `applyAnswer` 重建 `q` / `log` / `step`；迁移后 v1 / v2 的原始 key **保留不删**。
+- **已知限制（当前契约零容忍）**：v3 校验要求 `currentId`、`q` 的每个 key、`log` 的每条 `id` 都在当前题库中。题库题目 ID 被修改或删除时，整份 v3 会被判为非法并回退：先尝试 v2 → v1 迁移，都不可用则新建空 v3；这次回退会重置 v3 中的做题进度，但 v1 / v2 原始 key 仍保留。契约目前就是零容忍，不做逐题丢弃/局部修复。
+- `due` 依赖设备本地时间；手动修改系统时间会影响复习到期节奏。
 
 ### 答题对错反馈
 
@@ -184,15 +272,39 @@ npx @capacitor/assets generate --android
 
 ## 验收与测试
 
-`qa/` 下有本机 Chromium + Playwright 的验收脚本、报告和截图：
-
-- `qa/verify.mjs`：用 file:// 打开 `www/index.html`，在 360×640、412×915 两个视口下验证无限随机抽题、无进度 UI、对错反馈、断点续做、旧版状态迁移、防连点、长题换行、无横向溢出、无 console 错误等
-- `qa/report.md`：断言结果与截图清单
-- `qa/*.png`：两个视口各 9 张截图（initial / feedback / feedback-wrong / feedback-correct / after-answer / resume / long-question / long-stem / double-click）
-
-运行脚本需要本机已有 playwright-core 与 Chromium（脚本里使用了本机路径，仅用于开发验收，不是应用运行依赖）：
+自适应算法的测试分三层：
 
 ```bash
+# 1. 选择器单元测试（node:test，覆盖 box/due、到期复习、冷启动、连击、最近 10、AI 权重、不可变性）
+node qa/selector.test.mjs
+
+# 2. 四场景模拟（固定种子 20260101，可重复；生成 qa/simulation.md）
+node scripts/simulate.mjs
+# 也可指定种子：node scripts/simulate.mjs 12345
+
+# 3. Web 端浏览器验收（先构建，再用 file:// 打开 www/index.html）
+npm run build
+node qa/verify.mjs
+```
+
+- `qa/verify.mjs` 使用本机 Chromium + `playwright-core`，在 **360×640 / 412×915** 两个视口下验证：
+  - 等待 app 动态加载 `selector.js` 就绪（`#question` 非空 + v3 出现，最长 5 秒）；
+  - 485 题、无进度 UI、4 选项、长题干/长选项换行、无横向溢出、内容最多题可滚动到底；
+  - 对错反馈（绿色/红色、约 600ms 后切题）、防连点、键盘 A–D / 1–4；
+  - 作答后 v3 的 `step / currentId / q[oldId] / log` 正确，且反馈期间已保存下一题；
+  - 刷新续做、v2 → v3、v1 → v3 迁移（v1/v2 原 key 保留）、最近 10 题排除；
+  - 冷启动类型序列（空状态连续 16 题全部答对时 = `TYPE_ORDER` 每类 2 题）与 v3 零容忍回退（v3 含题库外 id → 整份状态丢弃并按 v2/v1/空状态回退）；
+  - console / pageerror / 请求失败为 0、`www/` 无外部 URL。
+  - 浏览器验收**不做纯随机断言**；掌握度、softmax、Leitner 到期等细节由单元测试与模拟覆盖。
+- `qa/report.md`：最新一次验收的断言明细、截图清单与限制说明。
+- `qa/*.png`：两个视口各 9 张截图（initial / feedback / feedback-wrong / feedback-correct / after-answer / resume / long-question / long-stem / double-click）。
+- `qa/simulation.md`：四场景模拟报告（偏科 / 全能 / 新手 / 进步），含类型占比、正确率、复习占比、覆盖率与断言结果。
+
+运行浏览器验收需要本机已有 `playwright-core` 与 Chromium（它们只是开发验收依赖，不是应用运行依赖）。脚本会按常见路径回退，也可用环境变量指定：
+
+```bash
+PLAYWRIGHT_CORE_PATH=/path/to/playwright-core \
+CHROMIUM_PATH=/path/to/chrome \
 node qa/verify.mjs
 ```
 
@@ -201,10 +313,18 @@ node qa/verify.mjs
 以下可选功能未实现：
 
 - 题目出处、AI 答案提示
-- 按年份选题、错题重练、统计正确率
+- 按年份选题、手动错题本、正确率统计页
+- 账号 / 云同步（进度只在本机 `localStorage`）
 
 ## 已知限制
 
 - 没有在真机或模拟器上运行过（本机无模拟器设备），系统栏 / 启动页 / 返回键等原生表现需要真机确认
 - 超长题目在 360×640 小屏上需要上下滚动才能看全选项（文字会正常换行，不会横向溢出）
-- 无限模式是独立随机抽题，不是「所有题过一遍」；同一道题可能在若干题后再次出现（只保证不连续重复）
+- 自适应出题是「按算法调度」而不是把所有题过一遍；同一道题会在到期后再次出现，最近 10 题内不会重复
+- 冷启动「每类 2 题」是**尽力而为**：到期复习优先，前 16 题内出现到期复习时类型轮转可能偏移（CONTRACT 已裁决，不是 bug）
+- `reviewRatio < 0.4` 只是最近 20 条 `log` 窗口的局部复习 gate，不是全局复习题占比上限；`qa/simulation.md` 的「已见题占比」是另一个口径，二者不可直接比较
+- `box 5` 只表示「不参与到期复习」；类型内没有新题时，类型内排序 / 全库兜底仍可能抽到 box 5 的题（契约允许）
+- **题库题目 ID 变更/删除会导致整份 v3 校验失败并回退**（当前按契约零容忍）：v3 判非法后按 v2 → v1 → 空状态回退，v3 中的做题进度可能被重置；v1 / v2 原始数据保留
+- 复习到期时间依赖设备本地时间；手动改系统时间会影响复习节奏
+- `log` 最多保留 500 条；`q` 会保留所有做过的题的累计统计
+- 浏览器验收只覆盖桌面无头 Chromium 的 file:// 环境；真机 Android WebView / safe-area 表现需真机确认
