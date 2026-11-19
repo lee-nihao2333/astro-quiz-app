@@ -1,16 +1,16 @@
 (function () {
   "use strict";
 
-  // 本轮状态（轮次顺序 / 当前下标 / 作答记录）保存到 localStorage，用于断点续做
-  const STORAGE_KEY = "astroQuizState.v1";
+  // 无限刷题模式：每次作答后从全部题目中随机抽取下一题，没有进度、没有尽头。
+  // 当前题目与作答记录保存在 localStorage，用于关闭应用后断点续做。
+  const STORAGE_KEY = "astroQuizState.v2";
+  const LEGACY_STORAGE_KEY = "astroQuizState.v1";
   const LETTERS = ["A", "B", "C", "D"];
   const FEEDBACK_MS = 600; // 答完后显示对错的时间
-  const FADE_MS = 150; // 淡出 / 淡入各自的时长（反馈 + 淡出 + 淡入期间不响应点击）
+  const FADE_MS = 150; // 淡出 / 淡入各自的时长
 
   const bank = window.QUESTION_BANK;
   const $quiz = document.getElementById("quiz");
-  const $progress = document.getElementById("progress");
-  const $barFill = document.getElementById("barFill");
   const $question = document.getElementById("question");
   const $options = document.getElementById("options");
 
@@ -21,48 +21,37 @@
 
   const byId = new Map(bank.map((item) => [item.id, item]));
 
-  let state = loadState() || createRound();
+  let state = loadState() || createState();
   let locked = false;
   let feedbackTimer = 0;
   let swapTimer = 0;
   let unlockTimer = 0;
 
-  function shuffle(list) {
-    const result = list.slice();
-    for (let i = result.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [result[i], result[j]] = [result[j], result[i]];
-    }
-    return result;
+  // 随机抽一道题；excludeId 用于避免连续两题抽到同一道
+  function randomId(excludeId) {
+    if (bank.length === 1) return bank[0].id;
+    let id;
+    do {
+      id = bank[Math.floor(Math.random() * bank.length)].id;
+    } while (id === excludeId);
+    return id;
   }
 
-  // 把全部题目打乱成一轮；一轮做完后重新打乱再来一轮
-  function createRound() {
+  function createState() {
     return {
-      order: shuffle(bank.map((item) => item.id)),
-      index: 0,
-      // 当前轮作答记录：[{ id: "2014-12", choice: 1 }, ...]
+      currentId: randomId(null),
+      // 作答记录：[{ id: "2014-12", choice: 1 }, ...]，跨轮次持续累积
       answers: [],
     };
   }
 
   function isValidState(value) {
     if (!value || typeof value !== "object") return false;
-    const { order, index, answers } = value;
-    if (!Array.isArray(order) || order.length !== bank.length) return false;
-    if (!Number.isInteger(index) || index < 0 || index >= order.length) {
+    if (typeof value.currentId !== "string" || !byId.has(value.currentId)) {
       return false;
     }
-    if (!Array.isArray(answers)) return false;
-
-    const seen = new Set();
-    for (const id of order) {
-      if (typeof id !== "string" || !byId.has(id) || seen.has(id)) {
-        return false;
-      }
-      seen.add(id);
-    }
-    for (const answer of answers) {
+    if (!Array.isArray(value.answers)) return false;
+    for (const answer of value.answers) {
       if (
         !answer ||
         typeof answer.id !== "string" ||
@@ -78,23 +67,55 @@
   }
 
   function loadState() {
-    let raw;
+    let raw = null;
     try {
       raw = localStorage.getItem(STORAGE_KEY);
     } catch (err) {
       return null;
     }
-    if (!raw) return null;
+
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (isValidState(parsed)) {
+          return { currentId: parsed.currentId, answers: parsed.answers };
+        }
+      } catch (err) {
+        /* 当前格式损坏，尝试从旧版迁移 */
+      }
+    }
+
+    // 兼容旧版（v1：order/index/answers，一轮 485 题）的状态：
+    // 从上次做到的位置续做，作答记录保留。
     try {
-      const parsed = JSON.parse(raw);
-      if (!isValidState(parsed)) return null;
-      return {
-        order: parsed.order,
-        index: parsed.index,
-        answers: parsed.answers,
-      };
+      raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (!raw) return null;
+      const old = JSON.parse(raw);
+      if (
+        !old ||
+        !Array.isArray(old.order) ||
+        !Number.isInteger(old.index) ||
+        old.index < 0 ||
+        old.index >= old.order.length
+      ) {
+        return null;
+      }
+      const id = old.order[old.index];
+      if (typeof id !== "string" || !byId.has(id)) return null;
+      const answers = Array.isArray(old.answers)
+        ? old.answers.filter(
+            (answer) =>
+              answer &&
+              typeof answer.id === "string" &&
+              byId.has(answer.id) &&
+              Number.isInteger(answer.choice) &&
+              answer.choice >= 0 &&
+              answer.choice <= 3
+          )
+        : [];
+      return { currentId: id, answers };
     } catch (err) {
-      return null; // 数据损坏时重新开始
+      return null;
     }
   }
 
@@ -107,15 +128,11 @@
   }
 
   function currentQuestion() {
-    return byId.get(state.order[state.index]);
+    return byId.get(state.currentId);
   }
 
   function render() {
     const item = currentQuestion();
-    const total = state.order.length;
-
-    $progress.textContent = "第 " + (state.index + 1) + " / " + total + " 题";
-    $barFill.style.width = (state.index / total) * 100 + "%";
     $question.textContent = item.q;
 
     $options.textContent = "";
@@ -157,15 +174,12 @@
     locked = true;
 
     const item = currentQuestion();
-    // 记录作答并立刻推进下标，这样即使反馈/切换期间退出应用，下次也能从下一题继续
+    // 先落盘（作答记录 + 随机出的下一题），反馈/切换期间退出也不会丢进度
     state.answers.push({ id: item.id, choice: choice });
-    state.index += 1;
-    if (state.index >= state.order.length) {
-      state = createRound(); // 一轮做完，重新打乱开始下一轮
-    }
+    state.currentId = randomId(item.id);
     saveState();
 
-    // 先显示约 600ms 的对错反馈（正确项绿、选错项红），再淡出换下一题
+    // 先显示约 600ms 的对错反馈，再淡出换下一题
     showFeedback(item.answer, choice);
     clearTimeout(feedbackTimer);
     clearTimeout(swapTimer);
@@ -173,7 +187,7 @@
     feedbackTimer = setTimeout(function () {
       $quiz.classList.add("fade"); // 150ms 淡出
       swapTimer = setTimeout(function () {
-        render(); // 换下一题
+        render(); // 随机抽到的下一题
         $quiz.classList.remove("fade"); // 150ms 淡入
         unlockTimer = setTimeout(function () {
           locked = false;
@@ -197,5 +211,5 @@
   });
 
   render();
-  saveState(); // 新开一轮时立即落盘，之后随时关闭都能续做
+  saveState(); // 立即落盘，随时关闭都能续做
 })();
