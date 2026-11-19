@@ -32,6 +32,7 @@
   options: ["A", "B", "C", "D"], // 恰好 4 个非空字符串
   answer: 0,              // 0..3
   type: "恒星与星座",       // 必须是下面 8 类之一
+  explain: "……故选 **C**。", // 单行中文解析；答错时展示，支持少量 **加粗**
   ai: false               // boolean，answerSource === "ai" 时为 true
 }
 ```
@@ -296,7 +297,7 @@ UMD 形式，**零依赖**，不访问 DOM、不访问 `localStorage`、不自�
 - **不要修改 `src/index.html`**。
 - app.js 先创建 `<script src="selector.js">` 插入 `document.head`，`onload` 后再执行应用初始化；`onerror` 时显示“题库加载失败”并 `console.error`。
 - 初始化时读取 `window.AstroSelector`；缺失则报错退出。
-- 启动时校验题库每道题：`typeof id/q/options/answer` 合法、`type` 在 `TYPE_ORDER`、`typeof ai === "boolean"`。任一不满足：`console.error` 并显示“题库加载失败”，不要静默通过。
+- 启动时校验题库每道题：`typeof id/q/options/answer` 合法、`type` 在 `TYPE_ORDER`、`explain` 是非空字符串、`typeof ai === "boolean"`。任一不满足：`console.error` 并显示“题库加载失败”，不要静默通过。
 
 ### 8.2 状态与迁移
 
@@ -332,7 +333,9 @@ showFeedback(item.answer, choice);
 ```
 
 - 保留 600ms 反馈、150ms 淡出/淡入、锁定点击、键盘 A/B/C/D 与 1–4。
-- **界面不增加任何元素/文字**；不显示进度、统计、类型、box。
+- **答对**：600ms 后自动淡出切下一题。
+- **答错**：在选项下方展开题库 `explain`（`**加粗**` 安全渲染为 `<strong>`，不显示星号）；600ms 反馈后显示“轻触继续”，不自动切题，点击任意处/按任意键后淡出切下一题。解析内容视为纯文本，必须转义/用 textContent 构建，不能直接 innerHTML。
+- **界面不增加进度/统计/类型/box 等算法信息**；解析面板仅在答错时出现。
 - 动态加载 selector 期间可以没有题目文本，但不要新增加载提示文字。
 
 ## 9. 单元测试（`qa/selector.test.mjs`，C 负责）

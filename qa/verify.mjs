@@ -3,7 +3,8 @@
 // 产品形态（v3 自适应刷题）：
 //   1. 只有题目 + 4 个选项，没有进度条 / 题号进度
 //   2. app.js 动态加载 selector.js 后初始化；题库 485 题，按自适应算法出题
-//   3. 作答后先显示约 600ms 对错反馈（正确项绿、选错项红），再淡出切题
+//   3. 作答后先显示约 600ms 对错反馈（正确项绿、选错项红）；答对自动切题，
+//      答错展开 explain 解析并“轻触继续”
 //   4. 当前题与作答记录保存在 localStorage（astroQuizState.v3）；v1 / v2 可迁移且原 key 保留
 //
 // 覆盖：
@@ -11,7 +12,7 @@
 //   - 485 题、无进度 UI、4 选项、初始 v3 状态
 //   - 360×640 / 412×915：initial / feedback / feedback-wrong / feedback-correct /
 //     after-answer / resume / long-question / long-stem / double-click 截图
-//   - 对错反馈（绿/红、600ms 后切题）
+//   - 对错反馈（绿/红、600ms）；答错解析（含 **加粗** 渲染、轻触继续）
 //   - 作答后 v3：step +1、currentId 变化、q[oldId]、log 最后一条、反馈期间已保存下一题
 //   - 刷新续做同一题
 //   - v2 → v3、v1 → v3 迁移（step/q/log 正确，旧 key 保留）
@@ -177,6 +178,23 @@ async function readFeedback(page) {
   });
 }
 
+async function readExplanation(page) {
+  return page.evaluate(() => {
+    const box = document.getElementById('explain');
+    const text = document.getElementById('explainText');
+    const hint = document.getElementById('explainHint');
+    return {
+      hidden: box ? box.hidden : true,
+      text: text ? text.textContent : '',
+      html: text ? text.innerHTML : '',
+      strongTexts: text
+        ? [...text.querySelectorAll('strong')].map((el) => el.textContent)
+        : [],
+      hintHidden: hint ? hint.hidden : true,
+    };
+  });
+}
+
 function isGreenColor(color) {
   return !!color && color.g > color.r + 30 && color.g > color.b + 20;
 }
@@ -296,6 +314,7 @@ async function readBankMeta(page) {
         answer: item.answer,
         type: item.type,
         ai: item.ai,
+        explain: item.explain,
         options: item.options.slice(),
       };
     }
@@ -729,9 +748,9 @@ async function testViewport(browser, vp) {
   const oldId1 = before1.currentId;
   const item1 = meta.byId[oldId1];
   const oldText1 = await readQuestion(page);
-  const correct1 = item1.answer === 0;
+  const correct1 = true;
 
-  await page.locator(OPTION_SEL).first().click();
+  await page.locator(OPTION_SEL).nth(item1.answer).click();
   await page.waitForTimeout(250); // 反馈期间（600ms 内）
 
   const fb1 = await readFeedback(page);
@@ -749,9 +768,16 @@ async function testViewport(browser, vp) {
   );
   eq(
     `${tag}/feedback-wrong-marked`,
-    '反馈：选错时选中项被标记为红色（.wrong）',
-    JSON.stringify(correct1 ? [] : [0]),
+    '反馈：答对时没有红色标记（.wrong）',
+    '[]',
     JSON.stringify(fb1.wrong)
+  );
+  const explain1 = await readExplanation(page);
+  ok(
+    `${tag}/feedback-correct-no-explanation`,
+    '答对时不显示解析面板',
+    explain1.hidden === true,
+    `hidden=${explain1.hidden}`
   );
   const shotFeedback = await screenshot(page, `${tag}-feedback.png`, tag);
   eq(
@@ -854,10 +880,17 @@ async function testViewport(browser, vp) {
     `${shotResume.width}x${shotResume.height}`
   );
 
-  // ---- 确定性选错反馈（点击 A，正确项非 A） ----
-  console.log(`=== 视口 ${tag}：确定性选错 / 选对 ===`);
-  const wrongId = bankIds.find((id) => meta.byId[id].answer !== 0);
+  // ---- 确定性选错：颜色反馈 + explain 解析 + 轻触继续 ----
+  console.log(`=== 视口 ${tag}：确定性选错 / 解析 / 选对 ===`);
+  const wrongId =
+    bankIds.find(
+      (id) =>
+        meta.byId[id].answer !== 0 && meta.byId[id].explain.includes('**')
+    ) || bankIds.find((id) => meta.byId[id].answer !== 0);
   const wrongItem = meta.byId[wrongId];
+  const expectedStrongTexts = wrongItem.explain
+    .split('**')
+    .filter((_, index) => index % 2 === 1);
   await injectV3(page, tag, wrongId, 'inject-wrong');
   const beforeWrong = await readV3(page);
   const wrongText = await readQuestion(page);
@@ -891,13 +924,33 @@ async function testViewport(browser, vp) {
     fbWrong.colors[0] && isRedColor(fbWrong.colors[0].parsed),
     fbWrong.colors[0] ? fbWrong.colors[0].border : 'missing'
   );
-  const shotFbWrong = await screenshot(page, `${tag}-feedback-wrong.png`, tag);
-  eq(
-    `${tag}/shot-feedback-wrong-size`,
-    '选错反馈截图尺寸',
-    `${vp.width}x${vp.height}`,
-    `${shotFbWrong.width}x${shotFbWrong.height}`
+
+  const explainAt250 = await readExplanation(page);
+  ok(
+    `${tag}/explain-visible-wrong`,
+    '答错后显示解析面板（#explain）',
+    explainAt250.hidden === false,
+    `hidden=${explainAt250.hidden}`
   );
+  eq(
+    `${tag}/explain-text`,
+    '解析文本与题库 explain 一致（去掉 ** 标记）',
+    wrongItem.explain.replace(/\*\*/g, ''),
+    explainAt250.text
+  );
+  eq(
+    `${tag}/explain-bold`,
+    '解析中的 **加粗** 渲染为 <strong>',
+    JSON.stringify(expectedStrongTexts),
+    JSON.stringify(explainAt250.strongTexts)
+  );
+  ok(
+    `${tag}/explain-hint-hidden-initially`,
+    '600ms 反馈期间暂不显示“轻触继续”',
+    explainAt250.hintHidden === true,
+    `hintHidden=${explainAt250.hintHidden}`
+  );
+
   const duringWrong = await readV3(page);
   checkAnswerV3({
     tag,
@@ -910,15 +963,47 @@ async function testViewport(browser, vp) {
     bankIds,
     maxBox,
   });
+
+  await page.waitForTimeout(500); // 总约 750ms：反馈结束，进入“等待继续”
+  const explainAfter = await readExplanation(page);
+  ok(
+    `${tag}/explain-hint-visible`,
+    '反馈结束后显示“轻触继续”提示',
+    explainAfter.hintHidden === false,
+    `hintHidden=${explainAfter.hintHidden}`
+  );
+  ok(
+    `${tag}/explain-no-auto-advance`,
+    '答错后不自动切题，等待用户阅读解析',
+    (await readQuestion(page)) === wrongText,
+    `questionChanged=${(await readQuestion(page)) !== wrongText}`
+  );
+  const shotFbWrong = await screenshot(page, `${tag}-feedback-wrong.png`, tag);
+  eq(
+    `${tag}/shot-feedback-wrong-size`,
+    '选错解析截图尺寸',
+    `${vp.width}x${vp.height}`,
+    `${shotFbWrong.width}x${shotFbWrong.height}`
+  );
+
+  // 轻触解析（任意 pointerdown 均可继续）
+  await page.locator('#explain').click({ position: { x: 12, y: 12 } });
   const changedWrong = await waitForNextRendered(page, wrongId);
   ok(
     `${tag}/feedback-wrong-case-next`,
-    '选错反馈结束后进入下一题，v3.currentId 与页面一致',
+    '轻触继续后进入下一题，v3.currentId 与页面一致',
     changedWrong &&
       duringWrong.currentId !== wrongId &&
       (await readQuestion(page)) ===
         meta.byId[(await readV3(page)).currentId].q,
     changedWrong ? `next=${(await readV3(page)).currentId}` : '超时未切题'
+  );
+  const explainAfterNext = await readExplanation(page);
+  ok(
+    `${tag}/explain-hidden-after-next`,
+    '切题后解析面板隐藏',
+    explainAfterNext.hidden === true,
+    `hidden=${explainAfterNext.hidden}`
   );
 
   // ---- 确定性选对反馈（点击 A，正确项就是 A） ----
@@ -946,6 +1031,13 @@ async function testViewport(browser, vp) {
     '确定性选对：正确项边框为绿色系（计算样式）',
     fbRight.colors[0] && isGreenColor(fbRight.colors[0].parsed),
     fbRight.colors[0] ? fbRight.colors[0].border : 'missing'
+  );
+  const explainRight = await readExplanation(page);
+  ok(
+    `${tag}/feedback-right-case-no-explanation`,
+    '确定性选对：不显示解析面板',
+    explainRight.hidden === true,
+    `hidden=${explainRight.hidden}`
   );
   const shotFbRight = await screenshot(page, `${tag}-feedback-correct.png`, tag);
   eq(
@@ -1125,7 +1217,8 @@ async function testViewport(browser, vp) {
     }
     picked.push(st.currentId);
     const oldText = await readQuestion(page);
-    await page.locator(OPTION_SEL).first().click();
+    const currentItem = meta.byId[st.currentId];
+    await page.locator(OPTION_SEL).nth(currentItem.answer).click();
     await page.waitForTimeout(200);
     const changed = await waitForNextRendered(page, st.currentId);
     if (!changed) {
@@ -1198,11 +1291,12 @@ async function testViewport(browser, vp) {
   console.log(`=== 视口 ${tag}：防连点 ===`);
   await injectV3(page, tag, cand.optionsHeavy.id, 'inject-double');
   const beforeD1 = await readV3(page);
-  await page.evaluate(() => {
+  const answerD1 = meta.byId[beforeD1.currentId].answer;
+  await page.evaluate(({ answer }) => {
     const btns = [...document.querySelectorAll('#options button.option')];
-    btns[0].click();
-    btns[1].click();
-  });
+    btns[answer].click();
+    btns[(answer + 1) % 4].click();
+  }, { answer: answerD1 });
   const d1Rendered = await waitForNextRendered(page, beforeD1.currentId);
   await page.waitForTimeout(100);
   const stD1 = await readV3(page);
@@ -1226,11 +1320,12 @@ async function testViewport(browser, vp) {
   );
 
   const beforeD2 = stD1;
-  await page.evaluate(() => {
+  const answerD2 = meta.byId[beforeD2.currentId].answer;
+  await page.evaluate(({ answer }) => {
     const btns = [...document.querySelectorAll('#options button.option')];
-    btns[0].click();
-    btns[0].click();
-  });
+    btns[answer].click();
+    btns[answer].click();
+  }, { answer: answerD2 });
   await waitForNextRendered(page, beforeD2.currentId);
   await page.waitForTimeout(100);
   const stD2 = await readV3(page);
@@ -1248,11 +1343,12 @@ async function testViewport(browser, vp) {
   );
 
   const beforeD3 = stD2;
-  await page.evaluate(() => {
+  const answerD3 = meta.byId[beforeD3.currentId].answer;
+  await page.evaluate(({ answer }) => {
     const btns = [...document.querySelectorAll('#options button.option')];
-    btns[0].click();
-    setTimeout(() => btns[1].click(), 50);
-  });
+    btns[answer].click();
+    setTimeout(() => btns[(answer + 1) % 4].click(), 50);
+  }, { answer: answerD3 });
   await waitForNextRendered(page, beforeD3.currentId);
   await page.waitForTimeout(100);
   const stD3 = await readV3(page);
@@ -1276,17 +1372,17 @@ async function testViewport(browser, vp) {
     `${shotDbl.width}x${shotDbl.height}`
   );
 
-  // ---- 键盘作答（A / 1-4） ----
+  // ---- 键盘作答（A / 2，均选择正确项以走自动切题路径） ----
   console.log(`=== 视口 ${tag}：键盘作答 ===`);
-  await injectV3(page, tag, wrongId, 'inject-keyboard');
+  await injectV3(page, tag, rightId, 'inject-keyboard');
   const beforeKb = await readV3(page);
   await page.keyboard.press('a');
   await page.waitForTimeout(250);
   const fbKb = await readFeedback(page);
   eq(
     `${tag}/keyboard-a-feedback`,
-    '键盘 A 键选择第 1 项并显示反馈',
-    JSON.stringify({ correct: [wrongItem.answer], wrong: [0] }),
+    '键盘 A 键选择第 1 项（正确）并显示绿色反馈',
+    JSON.stringify({ correct: [0], wrong: [] }),
     JSON.stringify({ correct: fbKb.correct, wrong: fbKb.wrong })
   );
   const duringKb = await readV3(page);
@@ -1295,27 +1391,26 @@ async function testViewport(browser, vp) {
     label: 'keyboard-a',
     before: beforeKb,
     after: duringKb,
-    oldId: wrongId,
-    item: wrongItem,
-    correct: false,
+    oldId: rightId,
+    item: rightItem,
+    correct: true,
     bankIds,
     maxBox,
   });
-  const kbNext = await waitForNextRendered(page, wrongId);
-  ok(`${tag}/keyboard-a-next`, '键盘作答后正常切题', kbNext, kbNext ? '已切题' : '超时');
+  const kbNext = await waitForNextRendered(page, rightId);
+  ok(`${tag}/keyboard-a-next`, '键盘 A 键答对后自动切题', kbNext, kbNext ? '已切题' : '超时');
 
+  const kb2Id = bankIds.find((id) => meta.byId[id].answer === 1);
+  const kbItem2 = meta.byId[kb2Id];
+  await injectV3(page, tag, kb2Id, 'inject-keyboard-2');
   const beforeKb2 = await readV3(page);
-  const kbItem2 = meta.byId[beforeKb2.currentId];
   await page.keyboard.press('2');
   await page.waitForTimeout(250);
   const fbKb2 = await readFeedback(page);
   eq(
     `${tag}/keyboard-2-feedback`,
-    '键盘 2 键选择第 2 项并显示反馈',
-    JSON.stringify({
-      correct: [kbItem2.answer],
-      wrong: kbItem2.answer === 1 ? [] : [1],
-    }),
+    '键盘 2 键选择第 2 项（正确）并显示绿色反馈',
+    JSON.stringify({ correct: [1], wrong: [] }),
     JSON.stringify({ correct: fbKb2.correct, wrong: fbKb2.wrong })
   );
   const duringKb2 = await readV3(page);
@@ -1324,16 +1419,16 @@ async function testViewport(browser, vp) {
     label: 'keyboard-2',
     before: beforeKb2,
     after: duringKb2,
-    oldId: beforeKb2.currentId,
+    oldId: kb2Id,
     item: kbItem2,
-    correct: kbItem2.answer === 1,
+    correct: true,
     bankIds,
     maxBox,
   });
-  const kbNext2 = await waitForNextRendered(page, beforeKb2.currentId);
+  const kbNext2 = await waitForNextRendered(page, kb2Id);
   ok(
     `${tag}/keyboard-2-next`,
-    '数字键作答后正常切题',
+    '数字键 2 答对后自动切题',
     kbNext2,
     kbNext2 ? '已切题' : '超时'
   );
@@ -2058,7 +2153,10 @@ function writeReport({ browserVersion, pwVersion, gitHead, launchError, wwwHits 
     '- 界面只有题目 + 4 个选项，无 `#progress` 题号文字、无 `.bar` 进度条。'
   );
   lines.push(
-    '- 对错反馈：正确项 `.correct` 绿色边框、选错项 `.wrong` 红色边框（同时校验计算样式 RGB）；反馈约 600ms 内不切题，随后淡出/淡入切到下一题。'
+    '- 对错反馈：正确项 `.correct` 绿色边框、选错项 `.wrong` 红色边框（同时校验计算样式 RGB）；答对约 600ms 后自动淡出/淡入切到下一题。'
+  );
+  lines.push(
+    '- 答错解析：答错后 `#explain` 展开题库 `explain` 文本（`**加粗**` 已渲染为 `<strong>`，不显示字面量）；600ms 反馈结束后出现“轻触继续”，页面不自动切题；轻触后淡出切到下一题；答对时不显示解析。'
   );
   lines.push(
     '- 防连点：同步双点不同选项、同步双点同一选项、间隔 50ms 双点，均只前进 1 题、只保存 1 条 log。'
