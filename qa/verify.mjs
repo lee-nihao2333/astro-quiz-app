@@ -1,7 +1,7 @@
 // qa/verify.mjs — 天文刷题应用 www/index.html 自动化验收（Playwright + 本机 Chromium）
 //
 // 产品形态（v3 自适应刷题）：
-//   1. 只有题目 + 4 个选项，没有进度条 / 题号进度
+//   1. 只有题目 + 类别小字 + 4 个选项，没有进度条 / 题号进度
 //   2. app.js 动态加载 selector.js 后初始化；题库 485 题，按自适应算法出题
 //   3. 作答后先显示约 600ms 对错反馈（正确项绿、选错项红）；答对自动切题，
 //      答错展开 explain 解析并“轻触继续”
@@ -200,6 +200,21 @@ function isGreenColor(color) {
 }
 function isRedColor(color) {
   return !!color && color.r > color.g + 30 && color.r > color.b + 30;
+}
+
+// 灰色小字：解析 rgb(...) 并判断为低饱和、偏暗的颜色
+function parseCssRgb(text) {
+  const m = String(text).match(/rgba?\(([^)]+)\)/);
+  if (!m) return null;
+  const p = m[1].split(',').map((x) => parseFloat(x));
+  return { r: p[0], g: p[1], b: p[2], a: p[3] ?? 1 };
+}
+
+function isGrayish(color) {
+  if (!color) return false;
+  const max = Math.max(color.r, color.g, color.b);
+  const min = Math.min(color.r, color.g, color.b);
+  return max - min <= 60 && max < 220;
 }
 
 // 应用动态加载 selector.js 后再初始化。轮询 #question 文本与 v3 状态，最长 5 秒。
@@ -454,9 +469,15 @@ async function layoutMetrics(page) {
       return { lines: Math.max(byHeight, byRange), byHeight, byRange };
     };
     const q = document.getElementById('question');
+    const typeEl = document.getElementById('questionType');
+    const typeStyle = typeEl ? getComputedStyle(typeEl) : null;
     const optTexts = [...document.querySelectorAll('.option-text')];
     return {
       questionText: q.textContent,
+      questionTypeText: typeEl ? typeEl.textContent : '',
+      questionTypeExists: !!typeEl,
+      questionTypeFontSize: typeStyle ? parseFloat(typeStyle.fontSize) : null,
+      questionTypeColor: typeStyle ? typeStyle.color : null,
       questionLines: lineCount(q),
       questionOverflowPx: Math.max(0, q.scrollWidth - q.clientWidth),
       docScrollWidth: document.documentElement.scrollWidth,
@@ -696,6 +717,23 @@ async function testViewport(browser, vp) {
     init.questionText.slice(0, 40)
   );
 
+  const initialType = meta.byId[state0.currentId].type;
+  eq(
+    `${tag}/question-type-text`,
+    '题目下方灰色小字显示当前题目类别',
+    `类别：${initialType}`,
+    init.questionTypeText
+  );
+  ok(
+    `${tag}/question-type-small-gray`,
+    '类别小字：字号 ≤ 14px 且为灰色系',
+    init.questionTypeExists &&
+      init.questionTypeFontSize > 0 &&
+      init.questionTypeFontSize <= 14 &&
+      isGrayish(parseCssRgb(init.questionTypeColor)),
+    `fontSize=${init.questionTypeFontSize}px, color=${init.questionTypeColor}`
+  );
+
   eq(`${tag}/option-count`, '选项按钮数量', 4, await optionCount(page));
   const letters = await page.$$eval('#options .letter', (els) =>
     els.map((e) => e.textContent)
@@ -825,6 +863,13 @@ async function testViewport(browser, vp) {
     '切题后仍然没有进度 UI',
     !metricsAfter.progressExists && !metricsAfter.barExists,
     `progress=${metricsAfter.progressExists}, bar=${metricsAfter.barExists}`
+  );
+  const afterAnswerType = meta.byId[(await readV3(page)).currentId].type;
+  eq(
+    `${tag}/question-type-updated`,
+    '切题后类别小字同步更新为新题类型',
+    `类别：${afterAnswerType}`,
+    metricsAfter.questionTypeText
   );
   const shotAfter = await screenshot(page, `${tag}-after-answer.png`, tag);
   eq(
@@ -2150,7 +2195,10 @@ function writeReport({ browserVersion, pwVersion, gitHead, launchError, wwwHits 
   lines.push('## 交互与非功能断言');
   lines.push('');
   lines.push(
-    '- 界面只有题目 + 4 个选项，无 `#progress` 题号文字、无 `.bar` 进度条。'
+    '- 界面只有题目 + 类别小字 + 4 个选项，无 `#progress` 题号文字、无 `.bar` 进度条。'
+  );
+  lines.push(
+    '- 题目下方 `#questionType` 灰色小字显示 `类别：<type>`：校验文本与当前题 `type` 一致、字号 ≤ 14px、颜色为灰色系，并随切题更新。'
   );
   lines.push(
     '- 对错反馈：正确项 `.correct` 绿色边框、选错项 `.wrong` 红色边框（同时校验计算样式 RGB）；答对约 600ms 后自动淡出/淡入切到下一题。'
