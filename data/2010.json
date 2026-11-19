@@ -9,7 +9,8 @@
       "天宫二号"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "时事与新闻"
   },
   {
     "no": 2,
@@ -21,7 +22,8 @@
       "望"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 3,
@@ -33,7 +35,8 @@
       "北，南"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 4,
@@ -45,7 +48,8 @@
       "不能看到日食"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 5,
@@ -57,7 +61,8 @@
       "海尔-波普彗星"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "时事与新闻"
   },
   {
     "no": 6,
@@ -69,7 +74,8 @@
       "木星"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 7,
@@ -81,7 +87,8 @@
       "双子座"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 9,
@@ -93,7 +100,8 @@
       "3 年"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 10,
@@ -105,7 +113,8 @@
       "望，初十五"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 11,
@@ -117,7 +126,8 @@
       "西，西"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 12,
@@ -129,7 +139,8 @@
       "矮行星"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 13,
@@ -141,7 +152,8 @@
       "30 万千米"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天文史、人物与综合常识"
   },
   {
     "no": 14,
@@ -153,7 +165,8 @@
       "200 年"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 15,
@@ -165,7 +178,8 @@
       "哥白尼"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天文史、人物与综合常识"
   },
   {
     "no": 16,
@@ -177,7 +191,8 @@
       "土星"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 17,
@@ -189,7 +204,8 @@
       "北极星（2 等）"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 18,
@@ -201,7 +217,8 @@
       "128"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 19,
@@ -213,7 +230,8 @@
       "牧夫座"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 20,
@@ -225,7 +243,8 @@
       "恩克彗星"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天文史、人物与综合常识"
   },
   {
     "no": 21,
@@ -237,7 +256,8 @@
       "19 年 7 闰法"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 22,
@@ -249,7 +269,8 @@
       "马上"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 23,
@@ -261,7 +282,8 @@
       "离子"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 24,
@@ -273,7 +295,8 @@
       "天王星、土星"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 25,
@@ -285,7 +308,8 @@
       "看平面镜反射的太阳像"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天文观测与望远镜"
   },
   {
     "no": 26,
@@ -297,7 +321,8 @@
       "紫金山天文台"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天文史、人物与综合常识"
   },
   {
     "no": 27,
@@ -309,7 +334,8 @@
       "木星"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 28,
@@ -321,7 +347,8 @@
       "天、海"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 29,
@@ -333,7 +360,8 @@
       "金牛座"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 30,
@@ -345,7 +373,8 @@
       "地球公转"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 31,
@@ -357,7 +386,8 @@
       "织女星与牛郎星"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 32,
@@ -369,7 +399,8 @@
       "冬至"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 33,
@@ -381,7 +412,8 @@
       "猎户星座由东南天空运动到西南天空"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 34,
@@ -393,7 +425,8 @@
       "超新星遗迹＋中子星"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 35,
@@ -405,6 +438,7 @@
       "不规则星系"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "星系与宇宙"
   }
 ]

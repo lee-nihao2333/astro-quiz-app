@@ -9,7 +9,8 @@
       "25.4 光年"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "时事与新闻"
   },
   {
     "no": 2,
@@ -21,7 +22,8 @@
       "看不到日食"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 3,
@@ -33,7 +35,8 @@
       "月球"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 4,
@@ -45,7 +48,8 @@
       "月球"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "时事与新闻"
   },
   {
     "no": 5,
@@ -57,7 +61,8 @@
       "勇气号"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "时事与新闻"
   },
   {
     "no": 6,
@@ -69,7 +74,8 @@
       "日冕层"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 7,
@@ -81,7 +87,8 @@
       "海王星"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 9,
@@ -93,7 +100,8 @@
       "木星"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天文史、人物与综合常识"
   },
   {
     "no": 10,
@@ -105,7 +113,8 @@
       "世界时"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 11,
@@ -117,7 +126,8 @@
       "巨蟹座"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 12,
@@ -129,7 +139,8 @@
       "鹰状星云"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 13,
@@ -141,7 +152,8 @@
       "飞马座"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 14,
@@ -153,7 +165,8 @@
       "88 个"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 15,
@@ -165,7 +178,8 @@
       "6 等"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 16,
@@ -177,7 +191,8 @@
       "智神星"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 17,
@@ -189,7 +204,8 @@
       "摇光"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 18,
@@ -201,7 +217,8 @@
       "北极星"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 19,
@@ -213,7 +230,8 @@
       "大犬座"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 20,
@@ -225,7 +243,8 @@
       "北"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 21,
@@ -237,7 +256,8 @@
       "土星"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 22,
@@ -249,7 +269,8 @@
       "3 点"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 23,
@@ -261,7 +282,8 @@
       "晚 40 分钟升起"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 24,
@@ -273,7 +295,8 @@
       "X"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 25,
@@ -285,7 +308,8 @@
       "4 颗"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 26,
@@ -297,7 +321,8 @@
       "超新星"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 27,
@@ -309,7 +334,8 @@
       "英仙座流星雨"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 28,
@@ -321,7 +347,8 @@
       "旅行者 1 号"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "航天与空间探测"
   },
   {
     "no": 29,
@@ -333,7 +360,8 @@
       "天球仪"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天文观测与望远镜"
   },
   {
     "no": 30,
@@ -345,7 +373,8 @@
       "天文单位"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天文史、人物与综合常识"
   },
   {
     "no": 31,
@@ -357,7 +386,8 @@
       "火星"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 32,
@@ -369,7 +399,8 @@
       "500 颗"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 33,
@@ -381,7 +412,8 @@
       "公转速度不均匀"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 34,
@@ -393,7 +425,8 @@
       "昆明"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 35,
@@ -405,7 +438,8 @@
       "卯酉圈"
     ],
     "answer": 1,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 36,
@@ -417,7 +451,8 @@
       "30 天"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   },
   {
     "no": 37,
@@ -429,7 +464,8 @@
       "北河三"
     ],
     "answer": 2,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "恒星与星座"
   },
   {
     "no": 38,
@@ -441,7 +477,8 @@
       "天王星"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "太阳系与月球"
   },
   {
     "no": 39,
@@ -453,7 +490,8 @@
       "10 毫米"
     ],
     "answer": 3,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天文观测与望远镜"
   },
   {
     "no": 40,
@@ -465,6 +503,7 @@
       "天琴座流星雨"
     ],
     "answer": 0,
-    "answerSource": "ai"
+    "answerSource": "ai",
+    "type": "天象与时间历法"
   }
 ]
