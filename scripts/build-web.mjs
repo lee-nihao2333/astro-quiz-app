@@ -2,10 +2,13 @@
 /**
  * 构建脚本：把 src/ 与 data/ 组装成可离线运行的 www/
  *
- * 1. 读取 data/index.json 及其中列出的全部题库文件；
- * 2. 校验每道题（题干、4 个选项、答案下标、题目唯一 ID）；
- * 3. 清空并重新生成 www/，复制 src/，并生成 www/questions.js
- *    （内容为 window.QUESTION_BANK = [...]，不依赖 fetch）。
+ * 1. 从 src/selector.js 取得 TYPE_ORDER（单一来源，不复制常量）；
+ * 2. 读取 data/index.json 及其中列出的全部题库文件；
+ * 3. 校验每道题（题干、4 个选项、答案下标、题目唯一 ID、type 属于 TYPE_ORDER）；
+ * 4. 清空并重新生成 www/，复制 src/，并生成 www/questions.js
+ *    （内容为 window.QUESTION_BANK = [...]，每题含 { id, q, options, answer,
+ *    type, ai }，不依赖 fetch）；
+ * 5. 构建成功时按 TYPE_ORDER 打印全部 8 类的题数与总数。
  *
  * 任一条校验失败都会以非 0 退出码结束，并指出出问题的文件与题号。
  */
@@ -18,6 +21,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,6 +29,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DATA_DIR = join(ROOT, "data");
 const SRC_DIR = join(ROOT, "src");
 const WWW_DIR = join(ROOT, "www");
+const SELECTOR_PATH = join(SRC_DIR, "selector.js");
 
 function fail(message) {
   console.error(`\n[build] ✗ ${message}\n`);
@@ -45,6 +50,42 @@ function readJson(filePath, label) {
   }
 }
 
+/**
+ * 从 src/selector.js 读取 TYPE_ORDER（单一来源，不在此处复制一份）。
+ * selector 尚不存在或加载失败时给出清晰错误并以非 0 退出。
+ */
+function loadTypeOrder() {
+  if (!existsSync(SELECTOR_PATH)) {
+    fail(
+      `找不到 src/selector.js：type 校验所需的 TYPE_ORDER 必须从该模块取得（应有 window.AstroSelector / module.exports 导出）`
+    );
+  }
+
+  let selector;
+  try {
+    const require = createRequire(import.meta.url);
+    selector = require(SELECTOR_PATH);
+  } catch (err) {
+    fail(`无法加载 src/selector.js：${err.message}`);
+  }
+
+  const typeOrder = selector && selector.TYPE_ORDER;
+  if (!Array.isArray(typeOrder) || typeOrder.length === 0) {
+    fail("src/selector.js 未导出有效的 TYPE_ORDER（应为非空字符串数组）");
+  }
+  typeOrder.forEach((type, i) => {
+    if (typeof type !== "string" || type.trim() === "") {
+      fail(
+        `src/selector.js 的 TYPE_ORDER[${i}] 必须是非空字符串，实际为 ${JSON.stringify(
+          type
+        )}`
+      );
+    }
+  });
+
+  return typeOrder;
+}
+
 /** 统一描述某道题在源文件中的位置，便于报错定位 */
 function locate(file, index, item) {
   const no =
@@ -54,7 +95,7 @@ function locate(file, index, item) {
   return `data/${file} 第 ${index + 1} 条（题号 ${no}）`;
 }
 
-function assertQuestion(item, file, index, seenIds) {
+function assertQuestion(item, file, index, seenIds, typeOrder) {
   const where = locate(file, index, item);
 
   if (!item || typeof item !== "object" || Array.isArray(item)) {
@@ -90,6 +131,19 @@ function assertQuestion(item, file, index, seenIds) {
     );
   }
 
+  if (typeof item.type !== "string" || item.type.trim() === "") {
+    fail(
+      `${where}：type 必须是非空字符串，实际为 ${JSON.stringify(item.type)}`
+    );
+  }
+  if (!typeOrder.includes(item.type)) {
+    fail(
+      `${where}：type "${item.type}" 不在 TYPE_ORDER 中（允许的类型：${typeOrder.join(
+        "、"
+      )}）`
+    );
+  }
+
   const year = file.replace(/\.json$/i, "");
   if (!/^\d{4}$/.test(year)) {
     fail(`data/${file}：文件名必须是 4 位年份（如 2014.json）`);
@@ -100,10 +154,20 @@ function assertQuestion(item, file, index, seenIds) {
   }
   seenIds.set(id, `${file}（题号 ${item.no}）`);
 
-  return { id, q: item.q, options: item.options, answer: item.answer };
+  return {
+    id,
+    q: item.q,
+    options: item.options,
+    answer: item.answer,
+    type: item.type,
+    ai: item.answerSource === "ai",
+  };
 }
 
 function main() {
+  // ---- TYPE_ORDER 单一来源：src/selector.js ----
+  const typeOrder = loadTypeOrder();
+
   // ---- 读取索引 ----
   const indexPath = join(DATA_DIR, "index.json");
   if (!existsSync(indexPath)) {
@@ -134,7 +198,7 @@ function main() {
       fail(`data/${file} 必须是题目数组`);
     }
     list.forEach((item, position) => {
-      bank.push(assertQuestion(item, file, position, seenIds));
+      bank.push(assertQuestion(item, file, position, seenIds, typeOrder));
     });
   }
 
@@ -154,6 +218,18 @@ function main() {
   console.log(
     `[build] ✓ 题库校验通过：${index.length} 个文件，共 ${bank.length} 道题`
   );
+
+  // ---- 类型统计（按 TYPE_ORDER 顺序，8 类全部打印）----
+  const typeCounts = new Map(typeOrder.map((type) => [type, 0]));
+  for (const item of bank) {
+    typeCounts.set(item.type, (typeCounts.get(item.type) || 0) + 1);
+  }
+  console.log(`[build] 类型统计（TYPE_ORDER 共 ${typeOrder.length} 类）：`);
+  for (const type of typeOrder) {
+    console.log(`[build]   ${type}：${typeCounts.get(type)} 题`);
+  }
+  console.log(`[build]   合计：${bank.length} 题`);
+
   console.log(`[build] ✓ 已生成 www/（${bank.length} 题，离线可用）`);
 }
 
