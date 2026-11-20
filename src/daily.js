@@ -2,9 +2,9 @@
  * 每日目标（零依赖 UMD 模块）
  *
  * 规则：
- * - 每天（设备本地日期）需要答对 DAILY_GOAL = 20 道题；
- * - 只统计「答对」，答错不推进；答对达到 20 后当天进入自由刷题模式，进度不再显示；
- * - 第二天（本地日期变化）自动从 0 / 20 重新开始。
+ * - 每天（设备本地日期）需要答对 DAILY_GOAL = 10 道题；
+ * - 只统计「答对」，答错不推进；答对达到 10 后当天进入自由刷题模式，进度不再显示；
+ * - 第二天（本地日期变化）自动从 0 / 10 重新开始。
  *
  * 本模块只做纯计算，不访问 DOM、不访问存储、不读取系统时钟、不生成随机数：
  * 时间只使用入参 now（毫秒时间戳），存储由 app.js 负责。
@@ -13,7 +13,7 @@
  * Node：  require("./src/daily.js")
  *
  * API：
- *   DAILY_GOAL                      常量 20
+ *   DAILY_GOAL                      常量 10
  *   STORAGE_KEY                     localStorage key："astroQuizDaily.v1"
  *   dayKey(now)                     -> "YYYY-MM-DD"（设备本地日期）
  *   emptyDaily(now)                 -> { day, correct: 0, completedAt: null }
@@ -30,7 +30,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const DAILY_GOAL = 20;
+  const DAILY_GOAL = 10;
   const STORAGE_KEY = "astroQuizDaily.v1";
   const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -76,8 +76,8 @@
 
   /**
    * 把任意存储值归一化为「今天」的每日状态：
-   * - 缺失 / 非对象 / day 格式非法 / correct 非法 → 今天 0/20；
-   * - day 与今天不同（跨天）→ 今天 0/20；
+   * - 缺失 / 非对象 / day 格式非法 / correct 非法 → 今天 0/10；
+   * - day 与今天不同（跨天）→ 今天 0/10；
    * - correct 超过 DAILY_GOAL（例如旧数据）→ 夹到 DAILY_GOAL；
    * - completedAt 保留有限数字，否则 null（是否完成永远由 correct >= DAILY_GOAL 派生）。
    */
@@ -107,7 +107,7 @@
 
   /**
    * 记录一次作答。只有答对才推进进度；答错也会做跨天归一化（例如第二天第一题答错，
-   * 进度应立即显示 0 / 20 而不是昨天的 20 / 20）。
+   * 进度应立即显示 0 / 10 而不是昨天的 10 / 10）。
    *
    * 返回：
    * - state：新的每日状态对象（不修改入参）；

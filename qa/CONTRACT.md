@@ -337,7 +337,7 @@ showFeedback(item.answer, choice);
 - 保留 600ms 反馈、150ms 淡出/淡入、锁定点击、键盘 A/B/C/D 与 1–4。
 - **答对**：600ms 后自动淡出切下一题。
 - **答错**：在选项下方展开题库 `explain`（`**加粗**` 安全渲染为 `<strong>`，不显示星号）；600ms 反馈后显示“轻触继续”，不自动切题，点击任意处/按任意键后淡出切下一题。解析内容视为纯文本，必须转义/用 textContent 构建，不能直接 innerHTML。
-- **界面不增加算法/box 信息**；解析面板仅在答错时出现。每日目标进度条、`N / 20`、完成特效与自由刷题提示是产品需求，允许显示（见 §13）。
+- **界面不增加算法/box 信息**；解析面板仅在答错时出现。每日目标进度条、`N / 10`、完成特效与自由刷题提示是产品需求，允许显示（见 §13）。
 - 动态加载 selector 期间可以没有题目文本，但不要新增加载提示文字。
 
 ## 9. 单元测试（`qa/selector.test.mjs`，C 负责）
@@ -400,7 +400,7 @@ showFeedback(item.answer, choice);
 - 等待 app 动态加载 selector 完成（例如轮询 `#question` 文本非空 / localStorage v3 出现，最多 5 秒）。
 - 去掉“纯随机”断言；保留/更新：
   - 布局、每日目标进度条（答对推进、完成后隐藏并进入自由刷题）、4 选项、长题换行、无横向溢出、对错反馈、防连点、键盘（可保留）、console/网络错误、www 无外部 URL；
-  - 每日目标：初始 0/20、答错不推进、刷新保持、跨天重置、第 20 题震动一次 + 特效、完成后自由刷题不再触发；每日模块纯函数由 `qa/daily.test.mjs` 覆盖；
+  - 每日目标：初始 0/10、答错不推进、刷新保持、跨天重置、答对第 10 题震动一次 + 特效、完成后自由刷题不再触发；每日模块纯函数由 `qa/daily.test.mjs` 覆盖；
   - 作答后 v3 `q[id]` 存在且 `log` 最后一条匹配（id/type/ok/step），`currentId` 变化；
   - v1→v3、v2→v3 迁移检查，且迁移后 v1/v2 key 仍在；
   - 最近 10 题不重复选择（可从 log 验证连续题不相同；自适应算法细节由单测/模拟覆盖）。
@@ -422,9 +422,9 @@ showFeedback(item.answer, choice);
 
 ### 13.1 规则
 
-- 每天（设备**本地日期** 00:00 为界）需答对 **20** 道题（`DAILY_GOAL = 20`）；只有答对推进，答错不推进。
-- 进度 = `min(当天答对次数, 20)`；达到 20 后当天进入**自由刷题**：隐藏进度条，继续答题不推进计数、不再触发完成特效 / 震动。
-- 跨天（本地日期变化）自动重置为 0 / 20：刷新、从后台回前台、前台跨过 00:00（定时器）、完成特效播放期间跨过 00:00（特效结束后）都要重置。
+- 每天（设备**本地日期** 00:00 为界）需答对 **10** 道题（`DAILY_GOAL = 10`）；只有答对推进，答错不推进。
+- 进度 = `min(当天答对次数, 10)`；达到 10 后当天进入**自由刷题**：隐藏进度条，继续答题不推进计数、不再触发完成特效 / 震动。
+- 跨天（本地日期变化）自动重置为 0 / 10：刷新、从后台回前台、前台跨过 00:00（定时器）、完成特效播放期间跨过 00:00（特效结束后）都要重置。
 - 每日进度独立于 v3：不写入/不修改 `astroQuizState.v3`，v3 迁移或回退不影响每日进度。
 
 ### 13.2 纯函数模块 `src/daily.js`（UMD）
@@ -432,34 +432,34 @@ showFeedback(item.answer, choice);
 浏览器 `window.AstroDaily`，Node `require`；不访问 DOM / 存储 / 系统时钟 / 随机数，时间只使用入参 `now`（毫秒时间戳）。
 
 ```js
-DAILY_GOAL = 20
+DAILY_GOAL = 10
 STORAGE_KEY = "astroQuizDaily.v1"
 dayKey(now) -> "YYYY-MM-DD"                  // 设备本地日期；非法/超范围 now 抛 TypeError
 emptyDaily(now) -> { day, correct: 0, completedAt: null }
-normalizeDaily(state, now) -> state          // 跨天/非法自动重置；correct 夹到 [0, 20]
+normalizeDaily(state, now) -> state          // 跨天/非法自动重置；correct 夹到 [0, 10]
 recordAnswer(state, ok, now) -> { state, changed, completedNow }
 progress(state) -> { correct, goal, ratio, completed }
 isCompleted(state) -> boolean
 ```
 
 - `recordAnswer` 只统计 `ok === true`；`ok` 非 boolean 抛 TypeError；不修改入参。
-- `completedNow` 仅在本次作答使 `correct` 从 19 → 20 时为 true（用于只庆祝一次）。
-- 存储结构：`{ "day": "YYYY-MM-DD", "correct": 0..20, "completedAt": number|null }`；`completedAt` 为首次达标时间戳。
-- 单测：`qa/daily.test.mjs`（`node:test`），29+ 用例覆盖常量、本地日期、跨天、归一化、只统计答对、完成态、不可变性。
+- `completedNow` 仅在本次作答使 `correct` 从 9 → 10 时为 true（用于只庆祝一次）。
+- 存储结构：`{ "day": "YYYY-MM-DD", "correct": 0..10, "completedAt": number|null }`；`completedAt` 为首次达标时间戳。
+- 单测：`qa/daily.test.mjs`（`node:test`），31 个用例覆盖常量、本地日期、跨天、归一化、只统计答对、完成态、不可变性。
 
 ### 13.3 DOM 与交互契约
 
 - `#daily`：进度条容器；未完成时可见，自由刷题时 `hidden`。
-  - `#dailyCount`：`"N / 20"`。
-  - `#dailyTrack`：`role="progressbar"`，`aria-valuemin=0`、`aria-valuemax=goal`、`aria-valuenow=correct`、`aria-valuetext="今日答对 N / 20"`。
+  - `#dailyCount`：`"N / 10"`。
+  - `#dailyTrack`：`role="progressbar"`，`aria-valuemin=0`、`aria-valuemax=goal`、`aria-valuenow=correct`、`aria-valuetext="今日答对 N / 10"`。
   - `#dailyFill`：宽度 = `correct / goal * 100%`，带 CSS 过渡。
 - `#freeMode`：自由刷题提示（文本「今日目标已完成 · 自由刷题」），完成且不在特效中时可见。
 - `#celebrate`：全屏完成特效容器（初始 `hidden`）；显示时 `hidden=false`、class 含 `show`、`aria-hidden="false"`，内部 `.celebrate-title` 含「今日目标达成！」、`.confetti-piece` 由 JS 生成 28 个。
 - 完成时序（常量在 `src/app.js`）：
-  1. 第 20 题答对：立即 `navigator.vibrate(200)`（需 Android `VIBRATE` 权限）、进度条到 100%、`saveDaily`；
+  1. 答对第 10 题：立即震动——优先调用 `MainActivity` 注入的 `window.AstroNativeVibrate.vibrate(200)`（原生 `Vibrator`，需 Android `VIBRATE` 权限），桥缺失/异常时回退 `navigator.vibrate(200)`；进度条到 100%、`saveDaily`；
   2. `CELEBRATE_DELAY_MS = 450` 后显示特效；
   3. `CELEBRATE_HOLD_MS = 1600` 后淡出，`CELEBRATE_FADE_MS = 250`；
   4. 淡出完成 → 隐藏 `#daily`、显示 `#freeMode`、切下一题。
 - 特效期间轻触 `#celebrate` 可提前结束（仍走淡化与切题）；特效期间锁定作答。
-- 桌面无 `navigator.vibrate` 时静默跳过；Android WebView 实际震动需真机验证。
-- 验收：`qa/verify.mjs` 的 `testDailyGoal`（0→20、震动、特效、自由刷题、刷新保持）、`testDailyMidnight`（前台跨午夜、特效期间跨午夜）、两个视口的累计计数断言；截图 `qa/daily-goal-celebration.png`、`qa/daily-goal-free-mode.png`。
+- Android WebView 的 `navigator.vibrate` 可能因静音模式 / 用户手势 / WebView 版本静默失败（Blink 仍可能返回 true），因此原生桥优先；桥与 `navigator.vibrate` 都不可用时静默跳过，不影响答题。真机震动需真机验证。
+- 验收：`qa/verify.mjs` 的 `testDailyGoal`（0→1、震动、特效、自由刷题、刷新保持）、`testVibrationBridge`（原生桥优先 / 桥异常回退 / 无桥走 Web）、`testDailyMidnight`（前台跨午夜、特效期间跨午夜）、两个视口注入当天已完成状态后的自由刷题回归；截图 `qa/daily-goal-celebration.png`、`qa/daily-goal-free-mode.png`。

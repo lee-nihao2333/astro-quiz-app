@@ -61,7 +61,7 @@ const TODAY_KEY = '2026-11-19';
 const YESTERDAY = TODAY - DAY;
 const YESTERDAY_KEY = '2026-11-18';
 
-/** 今天 0/20 的期望值。 */
+/** 今天 0/10 的期望值。 */
 function resetToday() {
   return { day: TODAY_KEY, correct: 0, completedAt: null };
 }
@@ -75,8 +75,8 @@ function todayState(correct, completedAt = null) {
 // 1. 常量
 // ---------------------------------------------------------------------------
 
-test('常量: DAILY_GOAL 为 20、STORAGE_KEY 为 astroQuizDaily.v1', () => {
-  assert.equal(DAILY_GOAL, 20, '每日目标必须是 20 道');
+test('常量: DAILY_GOAL 为 10、STORAGE_KEY 为 astroQuizDaily.v1', () => {
+  assert.equal(DAILY_GOAL, 10, '每日目标必须是 10 道');
   assert.equal(typeof DAILY_GOAL, 'number');
   assert.equal(STORAGE_KEY, 'astroQuizDaily.v1', '存储 key 必须与 app 约定一致');
   assert.equal(typeof STORAGE_KEY, 'string');
@@ -174,7 +174,7 @@ test('emptyDaily: 每次返回新对象，互不影响', () => {
 // 4. normalizeDaily
 // ---------------------------------------------------------------------------
 
-test('normalizeDaily: null / undefined / 数组 / 字符串 / 数字 → 今天 0/20', () => {
+test('normalizeDaily: null / undefined / 数组 / 字符串 / 数字 → 今天 0/10', () => {
   const invalidStates = [
     null,
     undefined,
@@ -194,7 +194,7 @@ test('normalizeDaily: null / undefined / 数组 / 字符串 / 数字 → 今天 
     assert.deepEqual(
       normalizeDaily(state, TODAY),
       resetToday(),
-      `状态 ${String(state)}（typeof ${typeof state}）应重置为今天 0/20`,
+      `状态 ${String(state)}（typeof ${typeof state}）应重置为今天 0/10`,
     );
   }
 });
@@ -208,7 +208,7 @@ test('normalizeDaily: day 格式非法时重置', () => {
     '20261119',
     '2026-11-19 ',
     ' 2026-11-19',
-    '2026-11-9x',
+    '2026-11-19x',
     20261119,
     null,
     undefined,
@@ -218,15 +218,15 @@ test('normalizeDaily: day 格式非法时重置', () => {
     assert.deepEqual(
       normalizeDaily({ day, correct: 5, completedAt: TODAY }, TODAY),
       resetToday(),
-      `day=${String(day)} 非法时应重置为今天 0/20`,
+      `day=${String(day)} 非法时应重置为今天 0/10`,
     );
   }
 });
 
-test('normalizeDaily: day 不是今天（now - 86400000）时重置为今天 0/20', () => {
+test('normalizeDaily: day 不是今天（now - 86400000）时重置为今天 0/10', () => {
   const yesterdayState = {
     day: YESTERDAY_KEY,
-    correct: 20,
+    correct: 10,
     completedAt: YESTERDAY,
   };
   assert.deepEqual(normalizeDaily(yesterdayState, TODAY), resetToday(), '跨天后应重置');
@@ -243,7 +243,7 @@ test('normalizeDaily: correct 非整数 / 负数时重置', () => {
   const invalidCorrects = [
     1.5,
     -1,
-    -20,
+    -10,
     NaN,
     Infinity,
     -Infinity,
@@ -258,19 +258,19 @@ test('normalizeDaily: correct 非整数 / 负数时重置', () => {
     assert.deepEqual(
       normalizeDaily({ day: TODAY_KEY, correct, completedAt: null }, TODAY),
       resetToday(),
-      `correct=${String(correct)} 非法时应重置为今天 0/20`,
+      `correct=${String(correct)} 非法时应重置为今天 0/10`,
     );
   }
 });
 
-test('normalizeDaily: correct 超过 DAILY_GOAL 时夹到 20', () => {
+test('normalizeDaily: correct 超过 DAILY_GOAL 时夹到 10', () => {
   assert.deepEqual(
-    normalizeDaily(todayState(21), TODAY),
-    { day: TODAY_KEY, correct: 20, completedAt: null },
-    '21 应夹到 20',
+    normalizeDaily(todayState(11), TODAY),
+    { day: TODAY_KEY, correct: 10, completedAt: null },
+    '11 应夹到 10',
   );
-  assert.equal(normalizeDaily(todayState(999), TODAY).correct, 20);
-  assert.equal(normalizeDaily(todayState(DAILY_GOAL), TODAY).correct, 20, '20 本身应保留');
+  assert.equal(normalizeDaily(todayState(999), TODAY).correct, 10);
+  assert.equal(normalizeDaily(todayState(DAILY_GOAL), TODAY).correct, 10, '10 本身应保留');
   assert.equal(normalizeDaily(todayState(0), TODAY).correct, 0);
 });
 
@@ -311,11 +311,11 @@ test('normalizeDaily: 合法的今天状态原样返回（值相等但非同一�
   assert.deepEqual(normalized, { day: TODAY_KEY, correct: 7, completedAt: TODAY });
   assert.notEqual(normalized, state, '应返回新对象而不是入参引用');
   assert.deepEqual(state, todayState(7, TODAY), '入参不应被修改');
-  // 边界值：0 / 20 都合法
+  // 边界值：0 / 10 都合法
   assert.deepEqual(normalizeDaily(todayState(0), TODAY), resetToday());
-  assert.deepEqual(normalizeDaily(todayState(20, TODAY), TODAY), {
+  assert.deepEqual(normalizeDaily(todayState(10, TODAY), TODAY), {
     day: TODAY_KEY,
-    correct: 20,
+    correct: 10,
     completedAt: TODAY,
   });
 });
@@ -339,17 +339,17 @@ test('recordAnswer: ok=false 不增加 correct，同一天 changed=false', () =>
 test('recordAnswer: ok=false 跨天时重置并 changed=true', () => {
   const yesterdayState = {
     day: YESTERDAY_KEY,
-    correct: 20,
+    correct: 10,
     completedAt: YESTERDAY,
   };
   const result = recordAnswer(yesterdayState, false, TODAY);
-  assert.deepEqual(result.state, resetToday(), '跨天后答错也应显示今天 0/20');
+  assert.deepEqual(result.state, resetToday(), '跨天后答错也应显示今天 0/10');
   assert.equal(result.changed, true, '跨天重置必须标记 changed');
   assert.equal(result.completedNow, false);
   assert.equal(result.state.day, dayKey(TODAY));
 });
 
-test('recordAnswer: ok=true 每次 +1，changed=true，completedNow 只在 19→20 时为 true', () => {
+test('recordAnswer: ok=true 每次 +1，changed=true，completedNow 只在 9→10 时为 true', () => {
   let state = emptyDaily(TODAY);
   for (let i = 1; i <= DAILY_GOAL; i += 1) {
     const result = recordAnswer(state, true, TODAY);
@@ -363,15 +363,15 @@ test('recordAnswer: ok=true 每次 +1，changed=true，completedNow 只在 19→
     state = result.state;
   }
   assert.equal(state.correct, DAILY_GOAL);
-  assert.equal(state.completedAt, TODAY, '刚好达到 20 时 completedAt 等于传入 now');
+  assert.equal(state.completedAt, TODAY, '刚好达到 10 时 completedAt 等于传入 now');
 });
 
-test('recordAnswer: 达到 20 后继续答对不再变化（correct 仍 20、completedNow=false、completedAt 不变、changed=false）', () => {
+test('recordAnswer: 达到 10 后继续答对不再变化（correct 仍 10、completedNow=false、completedAt 不变、changed=false）', () => {
   const completedAt = TODAY - 60_000;
   const state = todayState(DAILY_GOAL, completedAt);
   const result = recordAnswer(state, true, TODAY);
 
-  assert.equal(result.state.correct, 20, '完成后继续答对不能超过 20');
+  assert.equal(result.state.correct, 10, '完成后继续答对不能超过 10');
   assert.equal(result.state.completedAt, completedAt, 'completedAt 必须保持首次完成时间');
   assert.equal(result.completedNow, false, '不应重复庆祝');
   assert.equal(result.changed, false, '状态无变化时 changed 必须为 false');
@@ -379,13 +379,13 @@ test('recordAnswer: 达到 20 后继续答对不再变化（correct 仍 20、com
 
   // 连续多次仍然稳定
   const again = recordAnswer(result.state, true, TODAY);
-  assert.equal(again.state.correct, 20);
+  assert.equal(again.state.correct, 10);
   assert.equal(again.state.completedAt, completedAt);
   assert.equal(again.completedNow, false);
   assert.equal(again.changed, false);
 });
 
-test('recordAnswer: completedAt 在刚好达到 20 时等于传入 now，未达到时为 null', () => {
+test('recordAnswer: completedAt 在刚好达到 10 时等于传入 now，未达到时为 null', () => {
   const justBefore = recordAnswer(todayState(DAILY_GOAL - 1), true, TODAY);
   assert.equal(justBefore.state.correct, DAILY_GOAL);
   assert.equal(justBefore.state.completedAt, TODAY);
@@ -393,14 +393,14 @@ test('recordAnswer: completedAt 在刚好达到 20 时等于传入 now，未达�
 
   const notYet = recordAnswer(todayState(DAILY_GOAL - 2), true, TODAY);
   assert.equal(notYet.state.correct, DAILY_GOAL - 1);
-  assert.equal(notYet.state.completedAt, null, '未达到 20 时不应写 completedAt');
+  assert.equal(notYet.state.completedAt, null, '未达到 10 时不应写 completedAt');
   assert.equal(notYet.completedNow, false);
 });
 
 test('recordAnswer: 旧数据/非法数据被归一化时 changed=true', () => {
-  // correct 超上限 → 夹到 20
+  // correct 超上限 → 夹到 10
   const over = recordAnswer(todayState(25), false, TODAY);
-  assert.deepEqual(over.state, todayState(20), 'correct 应被夹到 20');
+  assert.deepEqual(over.state, todayState(10), 'correct 应被夹到 10');
   assert.equal(over.changed, true, '归一化修正必须标记 changed');
 
   // correct 非整数 → 重置
@@ -424,10 +424,10 @@ test('recordAnswer: completedAt 属性缺失时归一化并标记 changed', () =
 test('recordAnswer: 不修改入参（前后 JSON 相同）', () => {
   const cases = [
     [todayState(3), true],
-    [todayState(19), true],
-    [todayState(20, TODAY), true],
+    [todayState(9), true],
+    [todayState(10, TODAY), true],
     [todayState(5), false],
-    [{ day: YESTERDAY_KEY, correct: 20, completedAt: YESTERDAY }, false],
+    [{ day: YESTERDAY_KEY, correct: 10, completedAt: YESTERDAY }, false],
     [{ day: 'abc', correct: 5, completedAt: TODAY }, true],
     [null, true],
     [undefined, false],
@@ -480,49 +480,49 @@ test('recordAnswer: now 非法时通过 dayKey 链路抛 TypeError', () => {
 // 6. progress / isCompleted
 // ---------------------------------------------------------------------------
 
-test('progress: 0 → 0%、10 → 50%、20 → 100% 且 completed 正确', () => {
+test('progress: 0 → 0%、5 → 50%、10 → 100% 且 completed 正确', () => {
   assert.deepEqual(progress(todayState(0)), {
     correct: 0,
-    goal: 20,
+    goal: 10,
     ratio: 0,
     completed: false,
   });
-  assert.deepEqual(progress(todayState(10)), {
-    correct: 10,
-    goal: 20,
+  assert.deepEqual(progress(todayState(5)), {
+    correct: 5,
+    goal: 10,
     ratio: 0.5,
     completed: false,
   });
-  assert.deepEqual(progress(todayState(20, TODAY)), {
-    correct: 20,
-    goal: 20,
+  assert.deepEqual(progress(todayState(10, TODAY)), {
+    correct: 10,
+    goal: 10,
     ratio: 1,
     completed: true,
   });
   // 其它中间值
-  assert.deepEqual(progress(todayState(5)), {
-    correct: 5,
-    goal: 20,
-    ratio: 0.25,
+  assert.deepEqual(progress(todayState(2)), {
+    correct: 2,
+    goal: 10,
+    ratio: 0.2,
     completed: false,
   });
-  assert.equal(progress(todayState(1)).ratio, 0.05);
+  assert.equal(progress(todayState(1)).ratio, 0.1);
   assert.equal(progress(todayState(1)).completed, false);
-  assert.equal(progress(todayState(19)).completed, false, '19 道尚未完成');
+  assert.equal(progress(todayState(9)).completed, false, '9 道尚未完成');
 });
 
-test('progress: 超过 20、负数、非法数据被防御到 [0, 20]', () => {
-  for (const correct of [21, 50, 1e9]) {
+test('progress: 超过 10、负数、非法数据被防御到 [0, 10]', () => {
+  for (const correct of [11, 50, 1e9]) {
     assert.deepEqual(
       progress(todayState(correct)),
-      { correct: 20, goal: 20, ratio: 1, completed: true },
-      `correct=${correct} 应夹到 20`,
+      { correct: 10, goal: 10, ratio: 1, completed: true },
+      `correct=${correct} 应夹到 10`,
     );
   }
-  for (const correct of [-1, -20, -1e9]) {
+  for (const correct of [-1, -10, -1e9]) {
     assert.deepEqual(
       progress(todayState(correct)),
-      { correct: 0, goal: 20, ratio: 0, completed: false },
+      { correct: 0, goal: 10, ratio: 0, completed: false },
       `correct=${correct} 应为 0`,
     );
   }
@@ -543,8 +543,8 @@ test('progress: 超过 20、负数、非法数据被防御到 [0, 20]', () => {
   for (const state of invalidStates) {
     assert.deepEqual(
       progress(state),
-      { correct: 0, goal: 20, ratio: 0, completed: false },
-      `progress(${String(state)}) 应防御为 0/20`,
+      { correct: 0, goal: 10, ratio: 0, completed: false },
+      `progress(${String(state)}) 应防御为 0/10`,
     );
   }
 });
@@ -563,9 +563,9 @@ test('isCompleted: 与 progress().completed 始终一致', () => {
     todayState(0),
     todayState(1),
     todayState(10),
-    todayState(19),
-    todayState(20, TODAY),
-    todayState(21),
+    todayState(9),
+    todayState(10, TODAY),
+    todayState(11),
     todayState(-1),
   ];
   for (const state of states) {
@@ -574,27 +574,27 @@ test('isCompleted: 与 progress().completed 始终一致', () => {
     assert.equal(typeof actual, 'boolean', `isCompleted(${String(state)}) 应返回 boolean`);
     assert.equal(actual, expected, `isCompleted 应与 progress().completed 一致：${String(state)}`);
   }
-  assert.equal(isCompleted(todayState(19)), false);
-  assert.equal(isCompleted(todayState(20)), true);
-  assert.equal(isCompleted(todayState(21)), true, '超过 20 视为已完成');
+  assert.equal(isCompleted(todayState(9)), false);
+  assert.equal(isCompleted(todayState(10)), true);
+  assert.equal(isCompleted(todayState(11)), true, '超过 10 视为已完成');
 });
 
 // ---------------------------------------------------------------------------
 // 7. 跨天场景
 // ---------------------------------------------------------------------------
 
-test('跨天: 昨天 20/20，今天先答错归零，再答对为 1/20', () => {
+test('跨天: 昨天 10/10，今天先答错归零，再答对为 1/10', () => {
   const yesterdayState = {
     day: YESTERDAY_KEY,
-    correct: 20,
+    correct: 10,
     completedAt: YESTERDAY,
   };
   const snapshot = structuredClone(yesterdayState);
-  // 昨天确实是 20/20 已完成
+  // 昨天确实是 10/10 已完成
   assert.equal(isCompleted(yesterdayState), true);
   assert.equal(progress(yesterdayState).ratio, 1);
 
-  // 今天第一题答错：应立刻归零（而不是沿用昨天的 20/20）
+  // 今天第一题答错：应立刻归零（而不是沿用昨天的 10/10）
   const wrong = recordAnswer(yesterdayState, false, TODAY);
   assert.equal(wrong.state.day, TODAY_KEY, 'state.day 应更新为今天');
   assert.equal(wrong.state.day, dayKey(TODAY));
@@ -605,24 +605,24 @@ test('跨天: 昨天 20/20，今天先答错归零，再答对为 1/20', () => {
   assert.equal(wrong.changed, true, '跨天重置必须标记 changed');
   assert.equal(wrong.completedNow, false);
 
-  // 今天再答对：1/20
+  // 今天再答对：1/10
   const right = recordAnswer(wrong.state, true, TODAY);
   assert.equal(right.state.day, TODAY_KEY);
   assert.equal(right.state.correct, 1);
   assert.equal(right.state.completedAt, null);
   assert.equal(right.changed, true);
   assert.equal(right.completedNow, false);
-  assert.equal(progress(right.state).ratio, 0.05);
+  assert.equal(progress(right.state).ratio, 0.1);
   assert.equal(isCompleted(right.state), false);
 
   // 昨天的入参自始至终未被修改
   assert.deepEqual(yesterdayState, snapshot);
 });
 
-test('跨天: 昨天已完成且今天继续答对，进度从 1/20 重新累计', () => {
-  const yesterdayState = { day: YESTERDAY_KEY, correct: 20, completedAt: YESTERDAY };
+test('跨天: 昨天已完成且今天继续答对，进度从 1/10 重新累计', () => {
+  const yesterdayState = { day: YESTERDAY_KEY, correct: 10, completedAt: YESTERDAY };
   let state = recordAnswer(yesterdayState, true, TODAY).state;
-  assert.equal(state.correct, 1, '新的一天从 1 开始而不是 21');
+  assert.equal(state.correct, 1, '新的一天从 1 开始而不是 11');
   for (let i = 0; i < 4; i += 1) state = recordAnswer(state, true, TODAY).state;
   assert.equal(state.correct, 5);
   assert.equal(state.completedAt, null, '今天尚未完成');
@@ -634,7 +634,7 @@ test('跨天: 昨天已完成且今天继续答对，进度从 1/20 重新累计
 // ---------------------------------------------------------------------------
 
 test('不可变性: normalizeDaily / recordAnswer / progress 不修改传入对象', () => {
-  const state = todayState(19);
+  const state = todayState(9);
   const snapshot = structuredClone(state);
 
   normalizeDaily(state, TODAY);

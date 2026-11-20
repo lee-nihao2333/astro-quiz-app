@@ -1,7 +1,7 @@
 // qa/verify.mjs — 天文刷题应用 www/index.html 自动化验收（Playwright + 本机 Chromium）
 //
 // 产品形态（v3 自适应刷题 + 每日目标）：
-//   1. 题目 + 类别小字 + 4 个选项 + 每日目标进度条；每天答对 20 题后进度条变为
+//   1. 题目 + 类别小字 + 4 个选项 + 每日目标进度条；每天答对 1 题后进度条变为
 //      「今日目标已完成 · 自由刷题」，不再显示进度
 //   2. app.js 动态加载 selector.js 后初始化；题库 485 题，按自适应算法出题
 //   3. 作答后先显示约 600ms 对错反馈（正确项绿、选错项红）；答对自动切题，
@@ -17,8 +17,8 @@
 //   - 对错反馈（绿/红、600ms）；答错解析（含 **加粗** 渲染、轻触继续）
 //   - 作答后 v3：step +1、currentId 变化、q[oldId]、log 最后一条、反馈期间已保存下一题
 //   - 刷新续做同一题
-//   - 每日目标：0/20 → 答对推进 / 答错不推进 → 刷新持久化 → 跨天重置，
-//     完成 20 题时震动一次 + 庆祝特效，随后进入自由刷题
+//   - 每日目标：全新 0/goal → 答错不推进 → 逐步答对，最后一题完成并震动一次 + 庆祝特效，
+//     随后进入自由刷题；刷新保持、跨天重置
 //   - v2 → v3、v1 → v3 迁移（step/q/log 正确，旧 key 保留）
 //   - 冷启动类型序列（空状态连续 16 题全部答对 → TYPE_ORDER 每类 2 题）
 //   - v3 零容忍回退（含题库外 id 的 v3 → 整份丢弃并按 v2/v1/空状态回退）
@@ -86,7 +86,7 @@ const V3_KEY = 'astroQuizState.v3';
 const V2_KEY = 'astroQuizState.v2';
 const V1_KEY = 'astroQuizState.v1';
 const DAILY_KEY = 'astroQuizDaily.v1';
-const DAILY_GOAL = 20;
+// 每日目标值统一从页面 window.AstroDaily.DAILY_GOAL 动态读取（当前为 1），不在验收脚本里写死。
 const TOTAL = 485;
 const DAY_MS = 86400000;
 const READY_TIMEOUT_MS = 5000;
@@ -199,31 +199,6 @@ async function waitForFreeMode(page, timeout = 6000) {
   }
 }
 
-// 等待每日进度填充稳定到期望比例（用于 95% 这种加载后仍有 CSS 过渡的场景）。
-async function waitForDailyRatio(page, expected, tolerance, timeout = 2000) {
-  try {
-    await page.waitForFunction(
-      ({ expected, tolerance }) => {
-        const fill = document.getElementById('dailyFill');
-        const track = document.getElementById('dailyTrack');
-        if (!fill || !track) return false;
-        const trackWidth = track.getBoundingClientRect().width;
-        if (!(trackWidth > 0)) return false;
-        return (
-          Math.abs(
-            fill.getBoundingClientRect().width / trackWidth - expected
-          ) <= tolerance
-        );
-      },
-      { expected, tolerance },
-      { timeout }
-    );
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
 // 在 context 级注入震动记录器：覆写 navigator.vibrate，把参数记录到
 // window.__vibrations。记录同时写入 window.name，使同一标签页刷新后仍能
 // 验证“完成后继续答对不再震动”（若只放内存 / sessionStorage，导航后可能丢失）。
@@ -272,6 +247,53 @@ async function installVibrationRecorder(ctx) {
 
 async function readQuestion(page) {
   return page.$eval('#question', (el) => el.textContent.trim());
+}
+
+// 原生震动桥 + Web 兜底的记录器（用于 testVibrationBridge）：
+// - mode="native"：window.AstroNativeVibrate 正常记录，navigator.vibrate 也应记录；
+// - mode="throw"：原生桥先记录再抛异常，app.js 应回退到 navigator.vibrate；
+// - 不注入桥时（mode="none"）只记录 navigator.vibrate。
+async function installVibrationRecorders(ctx, mode = 'none') {
+  await ctx.addInitScript(({ mode }) => {
+    window.__nativeVibrations = [];
+    window.__vibrations = [];
+    const recordWeb = (ms) => {
+      window.__vibrations.push(ms);
+      return true;
+    };
+    try {
+      Object.defineProperty(navigator, 'vibrate', {
+        configurable: true,
+        writable: true,
+        value: recordWeb,
+      });
+    } catch (e) {
+      try {
+        Object.defineProperty(Navigator.prototype, 'vibrate', {
+          configurable: true,
+          writable: true,
+          value: recordWeb,
+        });
+      } catch (e2) {
+        window.__vibrateInstallError = String(e2);
+      }
+    }
+    if (mode === 'native') {
+      window.AstroNativeVibrate = {
+        vibrate(ms) {
+          window.__nativeVibrations.push(ms);
+          return true;
+        },
+      };
+    } else if (mode === 'throw') {
+      window.AstroNativeVibrate = {
+        vibrate(ms) {
+          window.__nativeVibrations.push(ms);
+          throw new Error('native vibrate failed (test)');
+        },
+      };
+    }
+  }, { mode });
 }
 
 const OPTION_SEL = '#options button.option';
@@ -405,6 +427,41 @@ async function reloadApp(page, tag, label) {
   await page.reload({ waitUntil: 'load' });
   await page.evaluate(() => document.fonts.ready.then(() => true)).catch(() => {});
   return ensureReady(page, tag, label);
+}
+
+// 读取页面实际生效的每日目标（避免在验收脚本里写死目标值）。
+async function readDailyGoal(page) {
+  return page.evaluate(() => {
+    const api = window.AstroDaily;
+    return api && Number.isInteger(api.DAILY_GOAL) ? api.DAILY_GOAL : null;
+  });
+}
+
+// 注入「当天已完成」的每日状态并刷新。
+// goal 较小时，若不注入，两个视口回归流程里的答对会触发完成特效，
+// 打乱后续反馈 / 布局 / 迁移断言；注入后进度条一直隐藏，原有流程保持稳定。
+async function injectCompletedDaily(page, tag, label) {
+  const goal = await readDailyGoal(page);
+  if (!Number.isInteger(goal) || goal <= 0) {
+    throw new Error(`${tag}/${label}: 无法读取有效的 AstroDaily.DAILY_GOAL`);
+  }
+  await page.evaluate(
+    ({ key, goal }) => {
+      const api = window.AstroDaily;
+      const now = Date.now();
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          day: api.dayKey(now),
+          correct: goal,
+          completedAt: now,
+        })
+      );
+    },
+    { key: DAILY_KEY, goal }
+  );
+  await reloadApp(page, tag, label);
+  return goal;
 }
 
 // 注入合法的最小 v3 状态（currentId=targetId，step=0，q/log 为空），用于确定性场景。
@@ -633,7 +690,7 @@ async function layoutMetrics(page) {
         document.getElementById('quiz').className.indexOf('fade') !== -1,
       progressExists: !!document.getElementById('progress'),
       barExists: !!document.querySelector('.bar'),
-      // 每日目标：完成 20 题后 #daily 隐藏、#freeMode 显示
+      // 每日目标：完成每日目标后 #daily 隐藏、#freeMode 显示
       dailyExists: !!daily,
       dailyHidden: daily ? daily.hidden : true,
       dailyCountText: dailyCount ? dailyCount.textContent.trim() : '',
@@ -826,6 +883,9 @@ async function testViewport(browser, vp) {
   // ---- 初始加载（等待动态 selector 就绪） ----
   console.log(`\n=== 视口 ${tag}：初始加载 ===`);
   const state0 = await gotoApp(page, tag, 'initial');
+  // 先注入「当天已完成」的每日状态，后续答对不会触发完成特效 / 进度推进。
+  const dailyGoal = await injectCompletedDaily(page, tag, 'inject-daily-complete');
+  const goalText = `${dailyGoal} / ${dailyGoal}`;
   const meta = await readBankMeta(page);
   const bankIds = meta.ids;
   eq(`${tag}/bank-length`, 'window.QUESTION_BANK.length', TOTAL, meta.length);
@@ -848,35 +908,50 @@ async function testViewport(browser, vp) {
   const maxBox = config && Number.isInteger(config.maxBox) ? config.maxBox : 0;
 
   const init = await layoutMetrics(page);
+  const initDaily = await readDaily(page);
   ok(
-    `${tag}/daily-visible-initial`,
-    '初始加载：每日目标进度条可见（#daily 未隐藏）',
-    init.dailyExists && !init.dailyHidden,
-    `exists=${init.dailyExists}, hidden=${init.dailyHidden}`
+    `${tag}/daily-free-mode-initial`,
+    '初始加载（已注入当天完成）：#daily 隐藏、#freeMode 显示',
+    init.dailyExists &&
+      init.dailyHidden &&
+      init.freeModeExists &&
+      !init.freeModeHidden,
+    `dailyExists=${init.dailyExists}, dailyHidden=${init.dailyHidden}, freeModeHidden=${init.freeModeHidden}`
   );
   eq(
     `${tag}/daily-count-initial`,
-    '初始加载：#dailyCount 文本为 0 / 20',
-    '0 / 20',
+    `初始加载：#dailyCount 为 ${dailyGoal} / ${dailyGoal}（已完成，进度条隐藏）`,
+    goalText,
     init.dailyCountText
   );
   ok(
     `${tag}/daily-fill-initial`,
-    '初始加载：#dailyFill 宽度为 0',
+    '自由刷题模式无可见进度条（#dailyFill 可见宽度为 0）',
     init.dailyFillWidth === 0,
     `fillWidth=${init.dailyFillWidth}px`
   );
   eq(
     `${tag}/daily-aria-initial`,
-    '初始加载：#dailyTrack 的 aria-valuenow 为 0',
-    '0',
+    `初始加载：#dailyTrack 的 aria-valuenow 为 ${dailyGoal}`,
+    String(dailyGoal),
     init.dailyAriaValueNow
   );
   ok(
-    `${tag}/free-mode-hidden-initial`,
-    '初始加载：#freeMode 隐藏',
-    init.freeModeExists && init.freeModeHidden,
-    `exists=${init.freeModeExists}, hidden=${init.freeModeHidden}`
+    `${tag}/daily-storage-initial`,
+    `初始存储为今天 correct=${dailyGoal} 且 completedAt 为数字`,
+    !!initDaily &&
+      initDaily.correct === dailyGoal &&
+      typeof initDaily.completedAt === 'number' &&
+      Number.isFinite(initDaily.completedAt),
+    initDaily ? JSON.stringify(initDaily) : 'null'
+  );
+  ok(
+    `${tag}/free-mode-visible-initial`,
+    '初始加载：#freeMode 显示「自由刷题」',
+    init.freeModeExists &&
+      !init.freeModeHidden &&
+      init.freeModeText.includes('自由刷题'),
+    `exists=${init.freeModeExists}, hidden=${init.freeModeHidden}, text=${init.freeModeText}`
   );
   ok(
     `${tag}/legacy-progress-absent`,
@@ -1035,25 +1110,23 @@ async function testViewport(browser, vp) {
   const afterAnswerRatio = dailyRatio(metricsAfter);
   ok(
     `${tag}/after-answer-daily-visible`,
-    '切题后每日进度条仍可见',
+    '自由刷题模式下切题后 #daily 仍隐藏、#freeMode 显示',
     metricsAfter.dailyExists &&
-      !metricsAfter.dailyHidden &&
-      metricsAfter.freeModeHidden,
+      metricsAfter.dailyHidden &&
+      !metricsAfter.freeModeHidden,
     `dailyHidden=${metricsAfter.dailyHidden}, freeModeHidden=${metricsAfter.freeModeHidden}`
   );
   eq(
     `${tag}/after-answer-daily-count`,
-    '自然首题答对后每日计数为 1 / 20',
-    '1 / 20',
+    `自由刷题模式下 #dailyCount 保持 ${goalText}`,
+    goalText,
     metricsAfter.dailyCountText
   );
   ok(
     `${tag}/after-answer-daily-fill`,
-    '自然首题答对后填充比例约 0.05（容差 0.02）',
-    Math.abs(afterAnswerRatio - 0.05) <= 0.02,
-    `ratio=${afterAnswerRatio.toFixed(4)} (fill=${metricsAfter.dailyFillWidth.toFixed(
-      1
-    )}px, track=${metricsAfter.dailyTrackWidth.toFixed(1)}px)`
+    '自由刷题模式无可见进度条（#dailyFill 可见宽度为 0）',
+    afterAnswerRatio === -1 && metricsAfter.dailyFillWidth === 0,
+    `ratio=${afterAnswerRatio}, fillWidth=${metricsAfter.dailyFillWidth}px`
   );
   const afterAnswerType = meta.byId[(await readV3(page)).currentId].type;
   eq(
@@ -1110,16 +1183,16 @@ async function testViewport(browser, vp) {
   );
   eq(
     `${tag}/resume-daily-count`,
-    '刷新续做后每日计数仍为 1 / 20（已持久化）',
-    '1 / 20',
+    `刷新续做后 #dailyCount 保持 ${goalText}（自由刷题已持久化）`,
+    goalText,
     resumeMetrics.dailyCountText
   );
   ok(
     `${tag}/resume-daily-visible`,
-    '刷新续做后每日进度条仍可见',
+    '刷新续做后 #daily 仍隐藏、#freeMode 仍显示',
     resumeMetrics.dailyExists &&
-      !resumeMetrics.dailyHidden &&
-      resumeMetrics.freeModeHidden,
+      resumeMetrics.dailyHidden &&
+      !resumeMetrics.freeModeHidden,
     `dailyHidden=${resumeMetrics.dailyHidden}, freeModeHidden=${resumeMetrics.freeModeHidden}`
   );
   const shotResume = await screenshot(page, `${tag}-resume.png`, tag);
@@ -1151,14 +1224,14 @@ async function testViewport(browser, vp) {
   const wrongDailyState = await readDaily(page);
   eq(
     `${tag}/wrong-daily-count`,
-    '确定性答错后每日计数保持 1 / 20（答错不推进）',
-    '1 / 20',
+    `确定性答错后 #dailyCount 保持 ${goalText}（自由刷题不推进）`,
+    goalText,
     wrongDailyMetrics.dailyCountText
   );
   ok(
     `${tag}/wrong-daily-storage`,
-    '确定性答错后存储 correct 仍为 1',
-    !!wrongDailyState && wrongDailyState.correct === 1,
+    `确定性答错后存储 correct 仍为 ${dailyGoal}`,
+    !!wrongDailyState && wrongDailyState.correct === dailyGoal,
     wrongDailyState ? JSON.stringify(wrongDailyState) : 'null'
   );
   eq(
@@ -1281,16 +1354,16 @@ async function testViewport(browser, vp) {
   const rightDailyMetrics = await layoutMetrics(page);
   eq(
     `${tag}/right-daily-count`,
-    '确定性答对后每日计数变为 2 / 20',
-    '2 / 20',
+    `自由刷题模式下确定性答对后 #dailyCount 仍为 ${goalText}`,
+    goalText,
     rightDailyMetrics.dailyCountText
   );
   ok(
-    `${tag}/right-daily-not-completed`,
-    '2 / 20 时仍显示进度条、未进入自由刷题',
-    !rightDailyMetrics.dailyHidden &&
-      rightDailyMetrics.freeModeHidden &&
-      rightDailyMetrics.dailyAriaValueNow === '2',
+    `${tag}/right-daily-free-mode`,
+    '自由刷题模式下继续答对：#daily 隐藏、#freeMode 显示、aria-valuenow 为 goal',
+    rightDailyMetrics.dailyHidden &&
+      !rightDailyMetrics.freeModeHidden &&
+      rightDailyMetrics.dailyAriaValueNow === String(dailyGoal),
     `dailyHidden=${rightDailyMetrics.dailyHidden}, freeModeHidden=${rightDailyMetrics.freeModeHidden}, aria=${rightDailyMetrics.dailyAriaValueNow}`
   );
   eq(
@@ -1712,25 +1785,25 @@ async function testViewport(browser, vp) {
     kbNext2 ? '已切题' : '超时'
   );
 
-  // 本视口内累计答对：natural 1 + right 1 + recent 12 + double 3 + keyboard 2 = 19。
-  // 19 / 20 不应触发完成特效 / 自由刷题，用于交叉验证每日计数累计逻辑。
+  // 本视口已完成每日目标并注入当天已完成状态；后续多处作答只验证
+  // 自由刷题计数保持 goal、completedAt 不被改写、无完成特效。
   const beforeMigrationMetrics = await layoutMetrics(page);
   const beforeMigrationDaily = await readDaily(page);
   eq(
     `${tag}/daily-count-before-migration`,
-    '本视口累计答对 19 题后每日计数为 19 / 20',
-    '19 / 20',
+    `本视口多次答对后 #dailyCount 仍为 ${goalText}`,
+    goalText,
     beforeMigrationMetrics.dailyCountText
   );
   ok(
-    `${tag}/daily-not-completed-before-migration`,
-    '19 / 20 时进度条仍可见、自由刷题未出现、无庆祝特效',
-    !beforeMigrationMetrics.dailyHidden &&
-      beforeMigrationMetrics.freeModeHidden &&
-      beforeMigrationMetrics.dailyAriaValueNow === '19' &&
+    `${tag}/daily-state-before-migration`,
+    '自由刷题状态保持：#daily 隐藏、#freeMode 显示、correct=goal、completedAt 为数字',
+    beforeMigrationMetrics.dailyHidden &&
+      !beforeMigrationMetrics.freeModeHidden &&
+      beforeMigrationMetrics.dailyAriaValueNow === String(dailyGoal) &&
       !!beforeMigrationDaily &&
-      beforeMigrationDaily.correct === 19 &&
-      beforeMigrationDaily.completedAt === null,
+      beforeMigrationDaily.correct === dailyGoal &&
+      typeof beforeMigrationDaily.completedAt === 'number',
     beforeMigrationDaily
       ? `count=${beforeMigrationMetrics.dailyCountText}, aria=${beforeMigrationMetrics.dailyAriaValueNow}, daily=${JSON.stringify(
           beforeMigrationDaily
@@ -2280,6 +2353,10 @@ async function testColdStart(browser) {
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 
   await gotoApp(page, tag, 'cold-start');
+  // 若当天未完成，16 题中的答对会触发完成特效并阻断自动切题；
+  // 先注入「当天已完成」的每日状态，让 16 题连续作答流程保持稳定。
+  const coldGoal = await injectCompletedDaily(page, tag, 'inject-daily-complete');
+  const coldGoalText = `${coldGoal} / ${coldGoal}`;
   const meta = await readBankMeta(page);
   const typeOrder = await page.evaluate(() =>
     window.AstroSelector.TYPE_ORDER.slice()
@@ -2322,16 +2399,17 @@ async function testColdStart(browser) {
   const coldDaily = await readDaily(page);
   ok(
     `${tag}/daily-progress`,
-    '16 题全对后每日计数为 16 / 20 且进度条可见（独立 context，不会完成）',
-    coldDailyMetrics.dailyCountText === '16 / 20' &&
-      !coldDailyMetrics.dailyHidden &&
-      coldDailyMetrics.freeModeHidden &&
-      coldDailyMetrics.dailyAriaValueNow === '16' &&
+    '16 题全对后处于自由刷题（#daily 隐藏、#freeMode 显示），计数保持 goal / goal',
+    coldDailyMetrics.dailyCountText === coldGoalText &&
+      coldDailyMetrics.dailyHidden === true &&
+      coldDailyMetrics.freeModeHidden === false &&
+      coldDailyMetrics.dailyAriaValueNow === String(coldGoal) &&
       !!coldDaily &&
-      coldDaily.correct === 16 &&
-      coldDaily.completedAt === null,
+      coldDaily.correct === coldGoal &&
+      typeof coldDaily.completedAt === 'number' &&
+      Number.isFinite(coldDaily.completedAt),
     coldDaily
-      ? `count=${coldDailyMetrics.dailyCountText}, hidden=${coldDailyMetrics.dailyHidden}, aria=${coldDailyMetrics.dailyAriaValueNow}, daily=${JSON.stringify(
+      ? `count=${coldDailyMetrics.dailyCountText}, hidden=${coldDailyMetrics.dailyHidden}, freeHidden=${coldDailyMetrics.freeModeHidden}, aria=${coldDailyMetrics.dailyAriaValueNow}, daily=${JSON.stringify(
           coldDaily
         )}`
       : 'daily=null'
@@ -2348,8 +2426,8 @@ async function testColdStart(browser) {
 
 // ---- 全局：每日目标 + 自由刷题 ----
 // 独立 browser context（360×640），通过覆写 navigator.vibrate 记录震动参数。
-// 流程：全新 0/20 → 答对 1 题 → 答错不推进 → 刷新持久 → 跨天重置 →
-// 19/20 答对第 20 题 → 震动 + 庆祝特效 → 自由刷题 → 刷新保持。
+// goal=10 场景：全新 0/10 → 先答错不推进 → 逐步答对，最后一题完成（震动 + 特效）→
+// 自由刷题 → 刷新保持 → 跨天重置。
 async function testDailyGoal(browser) {
   const tag = 'daily-goal';
   console.log(`\n=== 全局：每日目标 / 自由刷题（${tag}，360×640） ===`);
@@ -2395,8 +2473,8 @@ async function testDailyGoal(browser) {
     }
   });
 
-  // ---- a. 全新 context：0 / 20 ----
-  console.log(`--- ${tag}：全新上下文 0 / 20 ---`);
+  // ---- a. 全新 context：0 / goal ----
+  console.log(`--- ${tag}：全新上下文 0 / goal ---`);
   await gotoApp(page, tag, 'daily-initial');
   const meta = await readBankMeta(page);
   const bankIds = meta.ids;
@@ -2411,13 +2489,15 @@ async function testDailyGoal(browser) {
     };
   });
   const daily0 = await readDaily(page);
+  const goal = dailyApi.goal;
+  const goalText = `${goal} / ${goal}`;
 
   ok(
     `${tag}/initial-daily-visible`,
-    '全新上下文：#daily 可见、#dailyCount 为 0 / 20、#dailyFill 宽度 0、#freeMode 隐藏',
+    `全新上下文：#daily 可见、#dailyCount 为 0 / ${goal}、#dailyFill 宽度 0、#freeMode 隐藏`,
     init.dailyExists &&
       !init.dailyHidden &&
-      init.dailyCountText === '0 / 20' &&
+      init.dailyCountText === `0 / ${goal}` &&
       init.dailyFillWidth === 0 &&
       init.dailyAriaValueNow === '0' &&
       init.freeModeExists &&
@@ -2426,13 +2506,13 @@ async function testDailyGoal(browser) {
   );
   eq(
     `${tag}/initial-daily-goal`,
-    'AstroDaily.DAILY_GOAL 为 20',
-    DAILY_GOAL,
+    'AstroDaily.DAILY_GOAL 为 10',
+    10,
     dailyApi.goal
   );
   ok(
     `${tag}/initial-daily-storage`,
-    '初始存储为今天 0 / 20（day=AstroDaily.dayKey(Date.now())，correct=0，completedAt=null）',
+    `初始存储为今天 0 / ${goal}（day=AstroDaily.dayKey(Date.now())，correct=0，completedAt=null）`,
     dailyApi.storageKey === DAILY_KEY &&
       typeof dailyApi.today === 'string' &&
       /^\d{4}-\d{2}-\d{2}$/.test(dailyApi.today) &&
@@ -2447,185 +2527,167 @@ async function testDailyGoal(browser) {
       : 'daily=null'
   );
 
-  // ---- b. 答对第 1 题：1 / 20，无震动 ----
-  console.log(`--- ${tag}：答对推进 1 / 20 ---`);
-  const firstRightId = bankIds.find((id) => meta.byId[id].answer === 0);
-  await injectV3(page, tag, firstRightId, 'inject-first-right');
-  await page.locator(OPTION_SEL).first().click();
-  await page.waitForTimeout(250);
-  const afterFirstMetrics = await layoutMetrics(page);
-  const afterFirstDaily = await readDaily(page);
-  const afterFirstVibrations = await page.evaluate(() =>
-    window.__vibrations.slice()
-  );
-  const firstRatio = dailyRatio(afterFirstMetrics);
-  eq(
-    `${tag}/first-right-count`,
-    '答对第 1 题后 #dailyCount 为 1 / 20',
-    '1 / 20',
-    afterFirstMetrics.dailyCountText
-  );
-  ok(
-    `${tag}/first-right-fill`,
-    '答对第 1 题后填充比例约 0.05（容差 0.02）',
-    Math.abs(firstRatio - 0.05) <= 0.02,
-    `ratio=${firstRatio.toFixed(4)} (fill=${afterFirstMetrics.dailyFillWidth.toFixed(
-      1
-    )}px, track=${afterFirstMetrics.dailyTrackWidth.toFixed(1)}px)`
-  );
-  ok(
-    `${tag}/first-right-storage`,
-    '答对第 1 题后存储 correct=1',
-    !!afterFirstDaily && afterFirstDaily.correct === 1,
-    afterFirstDaily ? JSON.stringify(afterFirstDaily) : 'null'
-  );
-  eq(
-    `${tag}/first-right-no-vibrate`,
-    '未完成目标时答对不震动（__vibrations 为空）',
-    '[]',
-    JSON.stringify(afterFirstVibrations)
-  );
-  const firstNext = await waitForNextRendered(page, firstRightId);
-  ok(
-    `${tag}/first-right-next`,
-    '答对第 1 题后正常自动切题',
-    firstNext,
-    firstNext ? '已切题' : '超时未切题'
-  );
-
-  // ---- c. 答错不推进；轻触继续 ----
-  console.log(`--- ${tag}：答错不推进 ---`);
+  // ---- b. 先答错：进度仍 0 / goal，无震动 / 特效 ----
+  console.log(`--- ${tag}：答错不推进（0 / ${goal}） ---`);
   const wrongDailyId = bankIds.find((id) => meta.byId[id].answer !== 0);
   await injectV3(page, tag, wrongDailyId, 'inject-wrong-daily');
+  const wrongText = await readQuestion(page);
   await page.locator(OPTION_SEL).first().click();
   await page.waitForTimeout(250);
   const wrongMetrics = await layoutMetrics(page);
   const wrongDaily = await readDaily(page);
+  const wrongVibrations = await page.evaluate(() =>
+    window.__vibrations.slice()
+  );
+  const wrongCelebration = await readCelebration(page);
   eq(
     `${tag}/wrong-count-held`,
-    '确定性答错后每日计数仍为 1 / 20',
-    '1 / 20',
+    `答错后 #dailyCount 仍为 0 / ${goal}`,
+    `0 / ${goal}`,
     wrongMetrics.dailyCountText
   );
   ok(
+    `${tag}/wrong-fill-zero`,
+    '答错后进度条填充保持 0',
+    !wrongMetrics.dailyHidden && dailyRatio(wrongMetrics) === 0,
+    `hidden=${wrongMetrics.dailyHidden}, ratio=${dailyRatio(wrongMetrics)}`
+  );
+  ok(
     `${tag}/wrong-storage-held`,
-    '确定性答错后存储 correct 仍为 1',
-    !!wrongDaily && wrongDaily.correct === 1,
+    '答错后存储 correct=0、completedAt=null',
+    !!wrongDaily && wrongDaily.correct === 0 && wrongDaily.completedAt === null,
     wrongDaily ? JSON.stringify(wrongDaily) : 'null'
   );
+  eq(
+    `${tag}/wrong-no-vibrate`,
+    '答错不震动（__vibrations 为空）',
+    '[]',
+    JSON.stringify(wrongVibrations)
+  );
+  ok(
+    `${tag}/wrong-no-celebration`,
+    '答错不显示完成特效',
+    wrongCelebration.hidden === true && wrongCelebration.show === false,
+    `hidden=${wrongCelebration.hidden}, show=${wrongCelebration.show}`
+  );
   await page.waitForTimeout(500); // 等 600ms 反馈结束后出现“轻触继续”
+  const wrongExplain = await readExplanation(page);
+  ok(
+    `${tag}/wrong-continue-hint`,
+    '答错反馈结束后显示「轻触继续」',
+    wrongExplain.hidden === false && wrongExplain.hintHidden === false,
+    `hidden=${wrongExplain.hidden}, hintHidden=${wrongExplain.hintHidden}`
+  );
+  ok(
+    `${tag}/wrong-no-auto-advance`,
+    '答错后不自动切题，等待用户轻触继续',
+    (await readQuestion(page)) === wrongText,
+    `questionChanged=${(await readQuestion(page)) !== wrongText}`
+  );
   await page.locator('#explain').click({ position: { x: 12, y: 12 } });
-  const wrongDailyNext = await waitForNextRendered(page, wrongDailyId);
+  const wrongNext = await waitForNextRendered(page, wrongDailyId);
   ok(
     `${tag}/wrong-continue-next`,
     '答错后轻触继续并切到下一题',
-    wrongDailyNext,
-    wrongDailyNext ? '已切题' : '超时未切题'
+    wrongNext,
+    wrongNext ? '已切题' : '超时未切题'
   );
 
-  // ---- d. 刷新持久化 ----
-  console.log(`--- ${tag}：刷新持久化 ---`);
-  await reloadApp(page, tag, 'daily-persist');
-  const persistMetrics = await layoutMetrics(page);
-  const persistDaily = await readDaily(page);
-  eq(
-    `${tag}/persist-count`,
-    '刷新后每日计数仍为 1 / 20',
-    '1 / 20',
-    persistMetrics.dailyCountText
-  );
-  ok(
-    `${tag}/persist-storage`,
-    '刷新后存储仍为今天 1 / 20',
-    !!persistDaily &&
-      persistDaily.correct === 1 &&
-      persistDaily.day === dailyApi.today,
-    persistDaily ? JSON.stringify(persistDaily) : 'null'
-  );
-
-  // ---- e. 跨天重置 ----
-  console.log(`--- ${tag}：跨天重置 ---`);
-  const yesterday = await page.evaluate(() =>
-    window.AstroDaily.dayKey(Date.now() - 86400000)
-  );
-  await page.evaluate(
-    ({ key, day }) => {
-      localStorage.setItem(
-        key,
-        JSON.stringify({
-          day,
-          correct: 20,
-          completedAt: Date.now() - 86400000,
-        })
-      );
-    },
-    { key: DAILY_KEY, day: yesterday }
-  );
-  await reloadApp(page, tag, 'daily-cross-day');
-  const crossMetrics = await layoutMetrics(page);
-  const crossDaily = await readDaily(page);
-  const todayKey = await page.evaluate(() =>
-    window.AstroDaily.dayKey(Date.now())
-  );
-  eq(
-    `${tag}/cross-day-count`,
-    '跨天（昨天 20 / 20）刷新后计数重置为 0 / 20',
-    '0 / 20',
-    crossMetrics.dailyCountText
-  );
-  ok(
-    `${tag}/cross-day-progress-visible`,
-    '跨天重置后进度条重新可见（#freeMode 隐藏）',
-    crossMetrics.dailyExists &&
-      !crossMetrics.dailyHidden &&
-      crossMetrics.freeModeHidden,
-    `dailyHidden=${crossMetrics.dailyHidden}, freeModeHidden=${crossMetrics.freeModeHidden}`
-  );
-  ok(
-    `${tag}/cross-day-storage`,
-    '跨天重置后存储 day 等于今天',
-    !!crossDaily &&
-      crossDaily.day === todayKey &&
-      crossDaily.correct === 0 &&
-      crossDaily.completedAt === null,
-    crossDaily
-      ? `today=${todayKey}, daily=${JSON.stringify(crossDaily)}`
-      : 'null'
-  );
-
-  // ---- f. 19 / 20 → 第 20 题：震动 + 庆祝特效 ----
-  console.log(`--- ${tag}：完成目标（震动 + 庆祝特效） ---`);
-  const todayForComplete = await page.evaluate(() =>
-    window.AstroDaily.dayKey(Date.now())
-  );
-  await page.evaluate(
-    ({ key, day }) => {
-      localStorage.setItem(
-        key,
-        JSON.stringify({ day, correct: 19, completedAt: null })
-      );
-    },
-    { key: DAILY_KEY, day: todayForComplete }
-  );
+  // ---- c. 逐步答对到 goal-1（不完成），最后一题触发完成（震动 + 特效） ----
+  console.log(`--- ${tag}：逐步推进到 ${goalText} 并完成 ---`);
   const completeId = bankIds.find((id) => meta.byId[id].answer === 0);
-  await injectV3(page, tag, completeId, 'inject-completion');
-  const fillStable = await waitForDailyRatio(page, 0.95, 0.02, 2000);
+  await injectV3(page, tag, completeId, 'inject-completion-start');
+  const startMetrics = await layoutMetrics(page);
+  eq(
+    `${tag}/start-count`,
+    `完成前重新注入后 #dailyCount 为 0 / ${goal}`,
+    `0 / ${goal}`,
+    startMetrics.dailyCountText
+  );
+  ok(
+    `${tag}/start-fill`,
+    '完成前进度条填充为 0',
+    dailyRatio(startMetrics) === 0,
+    `ratio=${dailyRatio(startMetrics)}`
+  );
+
+  // 前 goal-1 题：只推进进度，不触发震动 / 特效
+  for (let i = 1; i < goal; i += 1) {
+    const st = await readV3(page);
+    const item = meta.byId[st.currentId];
+    await page.locator(OPTION_SEL).nth(item.answer).click();
+    const changed = await waitForNextRendered(page, st.currentId);
+    const metrics = await layoutMetrics(page);
+    const dailyNow = await readDaily(page);
+    const vibNow = await page.evaluate(() => window.__vibrations.slice());
+    const celebNow = await readCelebration(page);
+    ok(
+      `${tag}/progress-${i}-changed`,
+      `第 ${i} 次答对后正常切题`,
+      changed,
+      changed ? '已切题' : '超时未切题'
+    );
+    eq(
+      `${tag}/progress-${i}-count`,
+      `第 ${i} 次答对后 #dailyCount 为 ${i} / ${goal}`,
+      `${i} / ${goal}`,
+      metrics.dailyCountText
+    );
+    ok(
+      `${tag}/progress-${i}-fill`,
+      `第 ${i} 次答对后进度约 ${((i / goal) * 100).toFixed(0)}%`,
+      Math.abs(dailyRatio(metrics) - i / goal) <= 0.02,
+      `ratio=${dailyRatio(metrics).toFixed(4)}（期望 ${(i / goal).toFixed(4)}）`
+    );
+    ok(
+      `${tag}/progress-${i}-not-completed`,
+      `第 ${i} 次答对未完成：进度条可见、存储 correct=${i}、无震动 / 特效`,
+      !metrics.dailyHidden &&
+        !!dailyNow &&
+        dailyNow.correct === i &&
+        vibNow.length === 0 &&
+        celebNow.hidden === true,
+      `dailyHidden=${metrics.dailyHidden}, daily=${JSON.stringify(
+        dailyNow
+      )}, vibrations=${JSON.stringify(vibNow)}, celebrateHidden=${celebNow.hidden}`
+    );
+  }
+
+  // 最后一题前重新注入确定题目，保证 completion 的 currentId 已知
+  await injectV3(page, tag, completeId, 'inject-completion-final');
   const preCompleteMetrics = await layoutMetrics(page);
-  const preCompleteRatio = dailyRatio(preCompleteMetrics);
   const preCompleteDaily = await readDaily(page);
+  const vibrateBeforeFinal = await page.evaluate(() =>
+    window.__vibrations.slice()
+  );
   eq(
     `${tag}/pre-complete-count`,
-    '注入 19 / 20 后显示 19 / 20',
-    '19 / 20',
+    `最后一题前 #dailyCount 为 ${goal - 1} / ${goal}`,
+    `${goal - 1} / ${goal}`,
     preCompleteMetrics.dailyCountText
   );
   ok(
     `${tag}/pre-complete-fill`,
-    '注入 19 / 20 后填充比例约 0.95（容差 0.02）',
-    fillStable && Math.abs(preCompleteRatio - 0.95) <= 0.02,
-    `stable=${fillStable}, ratio=${preCompleteRatio.toFixed(
-      4
-    )}, daily=${preCompleteDaily ? JSON.stringify(preCompleteDaily) : 'null'}`
+    `最后一题前进度约 ${(((goal - 1) / goal) * 100).toFixed(0)}%`,
+    Math.abs(dailyRatio(preCompleteMetrics) - (goal - 1) / goal) <= 0.02,
+    `ratio=${dailyRatio(preCompleteMetrics).toFixed(4)}（期望 ${(
+      (goal - 1) /
+      goal
+    ).toFixed(4)}）`
+  );
+  eq(
+    `${tag}/pre-complete-no-vibration`,
+    '完成前一题时仍无震动',
+    '[]',
+    JSON.stringify(vibrateBeforeFinal)
+  );
+  ok(
+    `${tag}/pre-complete-storage`,
+    `最后一题前存储 correct=${goal - 1}、completedAt=null`,
+    !!preCompleteDaily &&
+      preCompleteDaily.correct === goal - 1 &&
+      preCompleteDaily.completedAt === null,
+    preCompleteDaily ? JSON.stringify(preCompleteDaily) : 'null'
   );
 
   const clickStartedAt = Date.now();
@@ -2637,16 +2699,22 @@ async function testDailyGoal(browser) {
     } catch (e) {
       daily = null;
     }
+    const dailyCount = document.getElementById('dailyCount');
+    const dailyTrack = document.getElementById('dailyTrack');
     return {
       vibrations: window.__vibrations.slice(),
       daily,
+      dailyCountText: dailyCount ? dailyCount.textContent.trim() : '',
+      dailyAriaValueNow: dailyTrack
+        ? dailyTrack.getAttribute('aria-valuenow')
+        : null,
       installError: window.__vibrateInstallError || null,
     };
   }, DAILY_KEY);
   const clickElapsed = Date.now() - clickStartedAt;
   eq(
     `${tag}/complete-vibrate`,
-    '第 20 题答对瞬间调用 navigator.vibrate，参数恰好 [200]（一次）',
+    `答对第 ${goal} 题时调用 navigator.vibrate，参数恰好 [200]（一次）`,
     JSON.stringify([200]),
     JSON.stringify(completeImmediate.vibrations) +
       (completeImmediate.installError
@@ -2661,14 +2729,26 @@ async function testDailyGoal(browser) {
   );
   ok(
     `${tag}/complete-storage`,
-    '完成后存储 correct=20 且 completedAt 为数字',
+    `完成后存储 correct=${goal} 且 completedAt 为数字`,
     !!completeImmediate.daily &&
-      completeImmediate.daily.correct === 20 &&
+      completeImmediate.daily.correct === goal &&
       typeof completeImmediate.daily.completedAt === 'number' &&
       Number.isFinite(completeImmediate.daily.completedAt),
     completeImmediate.daily
       ? JSON.stringify(completeImmediate.daily)
       : 'null'
+  );
+  eq(
+    `${tag}/complete-count`,
+    `完成瞬间 #dailyCount 为 ${goalText}`,
+    goalText,
+    completeImmediate.dailyCountText
+  );
+  eq(
+    `${tag}/complete-aria`,
+    `完成瞬间 #dailyTrack 的 aria-valuenow 为 ${goal}`,
+    String(goal),
+    completeImmediate.dailyAriaValueNow
   );
 
   const celebrationShown = await page
@@ -2712,18 +2792,18 @@ async function testDailyGoal(browser) {
     celebrate.title.includes('今日目标达成'),
     celebrate.title
   );
-  ok(
+  eq(
     `${tag}/celebration-confetti`,
-    '.confetti-piece 数量 ≥ 20（应用生成 28 个）',
-    celebrate.confetti >= 20,
-    `confetti=${celebrate.confetti}`
+    '.confetti-piece 数量为 28（应用生成 28 个）',
+    28,
+    celebrate.confetti
   );
   ok(
     `${tag}/celebration-daily-visible`,
-    '庆祝期间 #daily 仍可见且计数 20 / 20（填充 100%）',
+    `庆祝期间 #daily 仍可见且计数 ${goalText}（填充 100%）`,
     !duringCelebrateMetrics.dailyHidden &&
-      duringCelebrateMetrics.dailyCountText === '20 / 20' &&
-      duringCelebrateMetrics.dailyAriaValueNow === '20' &&
+      duringCelebrateMetrics.dailyCountText === goalText &&
+      duringCelebrateMetrics.dailyAriaValueNow === String(goal) &&
       Math.abs(celebrateRatio - 1) <= 0.02,
     `hidden=${duringCelebrateMetrics.dailyHidden}, count=${duringCelebrateMetrics.dailyCountText}, aria=${duringCelebrateMetrics.dailyAriaValueNow}, ratio=${celebrateRatio.toFixed(4)}`
   );
@@ -2741,7 +2821,7 @@ async function testDailyGoal(browser) {
     `${shotCelebration.width}x${shotCelebration.height}`
   );
 
-  // ---- g. 进入自由刷题 ----
+  // ---- d. 进入自由刷题 ----
   console.log(`--- ${tag}：进入自由刷题 ---`);
   const enteredFreeMode = await waitForFreeMode(page, 6000);
   ok(
@@ -2796,7 +2876,7 @@ async function testDailyGoal(browser) {
     `${shotFreeMode.width}x${shotFreeMode.height}`
   );
 
-  // ---- h. 自由刷题继续答对：不再震动 / 不再推进 ----
+  // ---- e. 自由刷题继续答对：不再震动 / 不再推进 ----
   console.log(`--- ${tag}：自由刷题继续答对 ---`);
   const freeAnswerId = bankIds.find(
     (id) => meta.byId[id].answer === 0 && id !== stFree.currentId
@@ -2851,9 +2931,9 @@ async function testDailyGoal(browser) {
   );
   ok(
     `${tag}/free-answer-daily-unchanged`,
-    '自由刷题继续答对不推进每日计数：correct 仍 20、completedAt 不变',
+    `自由刷题继续答对不推进每日计数：correct 仍 ${goal}、completedAt 不变`,
     !!dailyAfterFreeAnswer &&
-      dailyAfterFreeAnswer.correct === 20 &&
+      dailyAfterFreeAnswer.correct === goal &&
       dailyAfterFreeAnswer.completedAt === completedAtBefore,
     dailyAfterFreeAnswer
       ? `daily=${JSON.stringify(dailyAfterFreeAnswer)}, completedBefore=${completedAtBefore}`
@@ -2867,7 +2947,7 @@ async function testDailyGoal(browser) {
     `dailyHidden=${freeAfterMetrics.dailyHidden}, freeModeHidden=${freeAfterMetrics.freeModeHidden}`
   );
 
-  // ---- i. 刷新后自由刷题状态保持 ----
+  // ---- f. 刷新后自由刷题状态保持 ----
   console.log(`--- ${tag}：刷新后自由刷题状态保持 ---`);
   const dailyBeforeRefresh = await readDaily(page);
   await reloadApp(page, tag, 'free-mode-persist');
@@ -2896,10 +2976,10 @@ async function testDailyGoal(browser) {
   );
   ok(
     `${tag}/free-persist-storage`,
-    '刷新后存储仍为今天 correct=20、completedAt 不变',
+    `刷新后存储仍为今天 correct=${goal}、completedAt 不变`,
     !!persistFreeDaily &&
       !!dailyBeforeRefresh &&
-      persistFreeDaily.correct === 20 &&
+      persistFreeDaily.correct === goal &&
       persistFreeDaily.day === dailyBeforeRefresh.day &&
       persistFreeDaily.completedAt === dailyBeforeRefresh.completedAt,
     persistFreeDaily
@@ -2907,7 +2987,57 @@ async function testDailyGoal(browser) {
       : 'null'
   );
 
-  // ---- j. console / pageerror ----
+  // ---- g. 跨天重置 ----
+  console.log(`--- ${tag}：跨天重置 ---`);
+  const yesterday = await page.evaluate(() =>
+    window.AstroDaily.dayKey(Date.now() - 86400000)
+  );
+  await page.evaluate(
+    ({ key, day, goal }) => {
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          day,
+          correct: goal,
+          completedAt: Date.now() - 86400000,
+        })
+      );
+    },
+    { key: DAILY_KEY, day: yesterday, goal }
+  );
+  await reloadApp(page, tag, 'daily-cross-day');
+  const crossMetrics = await layoutMetrics(page);
+  const crossDaily = await readDaily(page);
+  const todayKey = await page.evaluate(() =>
+    window.AstroDaily.dayKey(Date.now())
+  );
+  eq(
+    `${tag}/cross-day-count`,
+    `跨天（昨天 ${goalText}）刷新后计数重置为 0 / ${goal}`,
+    `0 / ${goal}`,
+    crossMetrics.dailyCountText
+  );
+  ok(
+    `${tag}/cross-day-progress-visible`,
+    '跨天重置后进度条重新可见（#freeMode 隐藏）',
+    crossMetrics.dailyExists &&
+      !crossMetrics.dailyHidden &&
+      crossMetrics.freeModeHidden,
+    `dailyHidden=${crossMetrics.dailyHidden}, freeModeHidden=${crossMetrics.freeModeHidden}`
+  );
+  ok(
+    `${tag}/cross-day-storage`,
+    '跨天重置后存储 day 等于今天',
+    !!crossDaily &&
+      crossDaily.day === todayKey &&
+      crossDaily.correct === 0 &&
+      crossDaily.completedAt === null,
+    crossDaily
+      ? `today=${todayKey}, daily=${JSON.stringify(crossDaily)}`
+      : 'null'
+  );
+
+  // ---- h. console / pageerror ----
   ok(
     `${tag}/no-console-errors`,
     '每日目标 / 自由刷题流程全程无 console error / warning / pageerror',
@@ -2924,11 +3054,168 @@ async function testDailyGoal(browser) {
   await ctx.close();
 }
 
+// ---- 全局：震动路径（原生桥优先，Web API 兜底） ----
+// 真机根因：Android WebView 的 navigator.vibrate 在静音模式 / 无手势 / 厂商 ROM
+// 等情况下会静默失败（Blink 仍可能返回 true），所以 app.js 优先调用 MainActivity
+// 注入的 window.AstroNativeVibrate，桥不可用时才回退 navigator.vibrate。
+async function testVibrationBridge(browser) {
+  const tag = 'vibration';
+  console.log(`\n=== 全局：震动路径（${tag}） ===`);
+  const errors = [];
+
+  async function makePage(mode) {
+    const ctx = await browser.newContext({
+      viewport: { width: 360, height: 640 },
+      deviceScaleFactor: 1,
+      isMobile: true,
+      hasTouch: true,
+    });
+    await installVibrationRecorders(ctx, mode);
+    const page = await ctx.newPage();
+    page.on('console', (m) => {
+      if (m.type() === 'error' || m.type() === 'warning') {
+        const entry = {
+          viewport: tag,
+          kind: `console.${m.type()}`,
+          text: m.text(),
+        };
+        errors.push(entry);
+        consoleErrors.push(entry);
+      }
+    });
+    page.on('pageerror', (e) => {
+      const entry = { viewport: tag, kind: 'pageerror', text: e.message };
+      errors.push(entry);
+      consoleErrors.push(entry);
+    });
+    await page.goto('file://' + WWW, { waitUntil: 'load' });
+    await page
+      .evaluate(() => document.fonts.ready.then(() => true))
+      .catch(() => {});
+    const state = await waitReady(page);
+    if (!state) throw new Error(`${tag}: 应用未在 5 秒内就绪`);
+    // 把每日进度预置为 goal-1：答对当前题即达到目标，触发震动（goal 可能 >1）。
+    await page.evaluate(() => {
+      const api = window.AstroDaily;
+      localStorage.setItem(
+        api.STORAGE_KEY,
+        JSON.stringify({
+          day: api.dayKey(Date.now()),
+          correct: api.DAILY_GOAL - 1,
+          completedAt: null,
+        })
+      );
+    });
+    await page.reload({ waitUntil: 'load' });
+    const seeded = await waitReady(page);
+    if (!seeded) throw new Error(`${tag}: 预置每日进度后应用未就绪`);
+    return { ctx, page };
+  }
+
+  // 已预置 goal-1，答对当前题即完成并触发震动。
+  async function answerCorrect(page) {
+    const item = await page.evaluate(() => {
+      const state = JSON.parse(localStorage.getItem('astroQuizState.v3'));
+      return (window.QUESTION_BANK || []).find((x) => x.id === state.currentId);
+    });
+    if (!item) throw new Error(`${tag}: 找不到当前题`);
+    await page.locator(OPTION_SEL).nth(item.answer).click();
+    await page.waitForTimeout(300);
+  }
+
+  async function readVibrations(page) {
+    return page.evaluate(() => ({
+      native: (window.__nativeVibrations || []).slice(),
+      web: (window.__vibrations || []).slice(),
+      installError: window.__vibrateInstallError || null,
+      goal: window.AstroDaily ? window.AstroDaily.DAILY_GOAL : null,
+    }));
+  }
+
+  // A. 原生桥存在且正常：只调原生桥，不再调 navigator.vibrate
+  const a = await makePage('native');
+  await answerCorrect(a.page);
+  const aVib = await readVibrations(a.page);
+  const aDaily = await readDaily(a.page);
+  eq(
+    `${tag}/native-bridge-called`,
+    '有原生桥时：window.AstroNativeVibrate.vibrate(200) 恰好调用一次',
+    JSON.stringify([200]),
+    JSON.stringify(aVib.native)
+  );
+  eq(
+    `${tag}/native-bridge-priority`,
+    '有原生桥时：不再回退调用 navigator.vibrate',
+    '[]',
+    JSON.stringify(aVib.web)
+  );
+  ok(
+    `${tag}/native-bridge-daily-completed`,
+    '原生桥调用路径同时完成每日目标（存储 correct=goal、completedAt 数字）',
+    !!aDaily &&
+      aDaily.correct === aVib.goal &&
+      typeof aDaily.completedAt === 'number' &&
+      Number.isFinite(aDaily.completedAt),
+    aDaily ? JSON.stringify(aDaily) : 'null'
+  );
+  await a.ctx.close();
+
+  // B. 原生桥抛异常：app.js 捕获后回退 navigator.vibrate，答题流程不中断
+  const b = await makePage('throw');
+  await answerCorrect(b.page);
+  const bVib = await readVibrations(b.page);
+  const bDaily = await readDaily(b.page);
+  eq(
+    `${tag}/native-bridge-attempted`,
+    '原生桥抛异常时：先尝试原生桥（记录到 200）',
+    JSON.stringify([200]),
+    JSON.stringify(bVib.native)
+  );
+  eq(
+    `${tag}/native-bridge-fallback-web`,
+    '原生桥抛异常时：回退 navigator.vibrate(200)',
+    JSON.stringify([200]),
+    JSON.stringify(bVib.web)
+  );
+  ok(
+    `${tag}/native-bridge-fallback-completes`,
+    '原生桥异常不阻断完成流程（每日目标仍完成）',
+    !!bDaily && bDaily.correct === bVib.goal,
+    bDaily ? JSON.stringify(bDaily) : 'null'
+  );
+  await b.ctx.close();
+
+  // C. 无原生桥（桌面浏览器 / 旧 APK）：仍走 navigator.vibrate 兜底
+  const c = await makePage('none');
+  await answerCorrect(c.page);
+  const cVib = await readVibrations(c.page);
+  eq(
+    `${tag}/web-fallback-native-absent`,
+    '无原生桥时：不调用原生桥（记录为空）',
+    '[]',
+    JSON.stringify(cVib.native)
+  );
+  eq(
+    `${tag}/web-fallback-called`,
+    '无原生桥时：回退 navigator.vibrate(200)',
+    JSON.stringify([200]),
+    JSON.stringify(cVib.web)
+  );
+  await c.ctx.close();
+
+  ok(
+    `${tag}/no-console-errors`,
+    '三种震动路径均无 console error / warning / pageerror',
+    errors.length === 0,
+    errors.length ? JSON.stringify(errors) : '0 条'
+  );
+}
+
 // ---- 全局：跨午夜自动重置（Playwright clock 模拟本地时间） ----
 // 覆盖两条真实边缘路径：
-//   A. 应用一直停在前台，跨过本地 00:00 后自动从 0 / 20 重新显示进度条；
-//   B. 完成第 20 题的特效播放期间跨过 00:00，特效结束后应显示第二天的 0 / 20，
-//      而不是继续停留在昨天的“自由刷题”。
+//   A. 应用一直停在前台，跨过本地 00:00 后自动从 0 / goal 重新显示进度条；
+//   B. 答对最后一题（完成每日目标）的庆祝特效播放期间跨过 00:00，特效结束后
+//      应显示第二天的 0 / goal，而不是继续停留在昨天的“自由刷题”。
 async function testDailyMidnight(browser) {
   const tag = 'daily-midnight';
   console.log(`\n=== 全局：跨午夜自动重置（${tag}，360×640） ===`);
@@ -2968,20 +3255,23 @@ async function testDailyMidnight(browser) {
     return { ctx, page };
   }
 
-  // A. 前台跨午夜：已完成（20 / 20、自由刷题）→ 00:00 后自动回到 0 / 20
+  // A. 前台跨午夜：已完成（goal / goal、自由刷题）→ 00:00 后自动回到 0 / goal
   console.log(`--- ${tag}：前台跨午夜自动重置 ---`);
   const a = await makePage(new Date(2026, 10, 19, 23, 59, 50));
-  await a.page.evaluate(() => {
+  const aGoal = await a.page.evaluate(() => {
     const api = window.AstroDaily;
+    const now = Date.now();
     localStorage.setItem(
       api.STORAGE_KEY,
       JSON.stringify({
-        day: api.dayKey(Date.now()),
-        correct: 20,
-        completedAt: Date.now(),
+        day: api.dayKey(now),
+        correct: api.DAILY_GOAL,
+        completedAt: now,
       })
     );
+    return api.DAILY_GOAL;
   });
+  const aZeroText = `0 / ${aGoal}`;
   await a.page.reload({ waitUntil: 'load' });
   const aReady = await waitReady(a.page);
   const aBefore = await layoutMetrics(a.page);
@@ -3005,8 +3295,8 @@ async function testDailyMidnight(browser) {
   );
   ok(
     `${tag}/foreground-midnight-reset`,
-    '前台跨过本地 00:00 后自动重置为第二天 0 / 20 并重新显示进度条',
-    aAfter.dailyCountText === '0 / 20' &&
+    `前台跨过本地 00:00 后自动重置为第二天 ${aZeroText} 并重新显示进度条`,
+    aAfter.dailyCountText === aZeroText &&
       aAfter.dailyHidden === false &&
       aAfter.freeModeHidden === true &&
       !!aDaily &&
@@ -3019,19 +3309,20 @@ async function testDailyMidnight(browser) {
   );
   await a.ctx.close();
 
-  // B. 庆祝特效期间跨午夜：特效结束 → 第二天 0 / 20
+  // B. 庆祝特效期间跨午夜：答对最后一题即完成 → 特效结束显示第二天 0 / goal
   console.log(`--- ${tag}：庆祝特效期间跨午夜 ---`);
   const b = await makePage(new Date(2026, 10, 19, 23, 59, 58));
   const bMeta = await readBankMeta(b.page);
   const bItem = bMeta.byId[bMeta.ids.find((id) => bMeta.byId[id].answer === 0)];
-  await b.page.evaluate(
+  const bGoal = await b.page.evaluate(
     ({ itemId, v3Key }) => {
       const api = window.AstroDaily;
       localStorage.setItem(
         api.STORAGE_KEY,
         JSON.stringify({
           day: api.dayKey(Date.now()),
-          correct: 19,
+          // 预置 goal-1，下一次答对即完成
+          correct: api.DAILY_GOAL - 1,
           completedAt: null,
         })
       );
@@ -3039,9 +3330,11 @@ async function testDailyMidnight(browser) {
         v3Key,
         JSON.stringify({ currentId: itemId, step: 0, q: {}, log: [] })
       );
+      return api.DAILY_GOAL;
     },
     { itemId: bItem.id, v3Key: V3_KEY }
   );
+  const bZeroText = `0 / ${bGoal}`;
   await b.page.reload({ waitUntil: 'load' });
   const bReady = await waitReady(b.page);
   await b.page.locator(OPTION_SEL).nth(bItem.answer).click();
@@ -3051,7 +3344,7 @@ async function testDailyMidnight(browser) {
   const bCelebrate = await readCelebration(b.page);
   ok(
     `${tag}/celebration-across-midnight-visible`,
-    '第 20 题答对后显示庆祝特效（跨午夜前）',
+    '答对最后一题（完成每日目标）后显示庆祝特效（跨午夜前）',
     !!bReady && bCelebrate.hidden === false && bCelebrate.show,
     `hidden=${bCelebrate.hidden}, show=${bCelebrate.show}`
   );
@@ -3066,8 +3359,8 @@ async function testDailyMidnight(browser) {
   );
   ok(
     `${tag}/celebration-across-midnight-reset`,
-    '特效期间跨过 00:00：特效结束后显示第二天 0 / 20（不再停留在昨天自由刷题）',
-    bAfter.dailyCountText === '0 / 20' &&
+    `特效期间跨过 00:00：特效结束后显示第二天 ${bZeroText}（不再停留在昨天自由刷题）`,
+    bAfter.dailyCountText === bZeroText &&
       bAfter.dailyHidden === false &&
       bAfter.freeModeHidden === true &&
       bCelebrateAfter.hidden === true &&
@@ -3220,7 +3513,7 @@ function writeReport({ browserVersion, pwVersion, gitHead, launchError, wwwHits 
   lines.push('## 交互与非功能断言');
   lines.push('');
   lines.push(
-    '- 界面为题目 + 类别小字 + 4 个选项 + 每日目标进度条（`#daily`）；答对 20 题后进度条替换为「今日目标已完成 · 自由刷题」提示（`#freeMode`）。旧版 `#progress` 题号文字 / `.bar` 进度条仍校验为不存在。'
+    '- 界面为题目 + 类别小字 + 4 个选项 + 每日目标进度条（`#daily`）；答对 1 题（达到每日目标）后进度条替换为「今日目标已完成 · 自由刷题」提示（`#freeMode`）。旧版 `#progress` 题号文字 / `.bar` 进度条仍校验为不存在。'
   );
   lines.push(
     '- 题目下方 `#questionType` 灰色小字显示 `类别：<type>`：校验文本与当前题 `type` 一致、字号 ≤ 14px、颜色为灰色系，并随切题更新。'
@@ -3244,29 +3537,32 @@ function writeReport({ browserVersion, pwVersion, gitHead, launchError, wwwHits 
   lines.push('## 每日目标 / 自由刷题');
   lines.push('');
   lines.push(
-    '- 独立 browser context（360×640）全新加载：`#daily` 可见、`#dailyCount` 为 `0 / 20`、`#dailyFill` 宽度 0、`#dailyTrack[aria-valuenow=0]`、`#freeMode` 隐藏；`localStorage["astroQuizDaily.v1"]` 为今天 `{ correct: 0, completedAt: null }`，`AstroDaily.DAILY_GOAL === 20`。'
+    '- 独立 browser context（360×640）全新加载：`#daily` 可见、`#dailyCount` 为 `0 / 10`、`#dailyFill` 宽度 0、`#dailyTrack[aria-valuenow=0]`、`#freeMode` 隐藏；`localStorage["astroQuizDaily.v1"]` 为今天 `{ correct: 0, completedAt: null }`，`AstroDaily.DAILY_GOAL === 10`。'
   );
   lines.push(
-    '- 答对推进到 `1 / 20`（填充约 5%）、答错不推进；刷新后计数持久化；写入昨天的 `20 / 20` 后刷新自动重置为今天的 `0 / 20`。'
+    '- 先答错一道：计数保持 `0 / 10`、填充 0、无震动 / 特效，轻触继续；随后逐步答对前 9 道只推进进度，答对第 10 道完成：存储 `correct=10` 且 `completedAt` 为数字、进度条 `10 / 10`。刷新后自由刷题保持；写入昨天的 `10 / 10` 后刷新自动重置为今天的 `0 / 10`。'
   );
   lines.push(
-    '- 完成目标：注入 `19 / 20` 后答对第 20 题 → 立即调用 `navigator.vibrate(200)` 一次（通过 init script 覆写并记录到 `window.__vibrations`）、存储 `correct=20` 且 `completedAt` 为数字；随后 `#celebrate` 以 `.show` / `aria-hidden="false"` 显示，含「今日目标达成！」与 28 个 `.confetti-piece`；停留约 1.6s 后淡出。彩带截图使用 `animations: "allow"` 以保留 CSS 动画。'
+    '- 完成目标：前 9 道只推进进度，答对第 10 道时调用 `navigator.vibrate(200)` 一次（通过 init script 覆写并记录到 `window.__vibrations`）、存储 `correct=10` 且 `completedAt` 为数字；随后 `#celebrate` 以 `.show` / `aria-hidden="false"` 显示，含「今日目标达成！」与 28 个 `.confetti-piece`；停留约 1.6s 后淡出。彩带截图使用 `animations: "allow"` 以保留 CSS 动画。'
   );
   lines.push(
     '- 自由刷题：`#daily` 隐藏、`#freeMode` 显示「今日目标已完成 · 自由刷题」、`#celebrate` 隐藏且彩带清空、页面题目等于 `v3.currentId` 对应题干；继续答对不再震动 / 不再出特效 / 不再推进计数，刷新后自由刷题状态保持。'
   );
   lines.push(
-    '- 两个视口内的每日计数按场景累计（natural 1 + right 1 + recent 12 + double-click 3 + keyboard 2 = 19），用于验证未达 20 时不会误触发完成特效；冷启动独立 context 16 题全对后为 `16 / 20`。'
+    '- 两个视口回归使用注入的「当天已完成」每日状态（goal / goal）：进度条一直隐藏，后续 natural / right / recent / double-click / keyboard 答对不再触发完成特效、不再推进计数；冷启动独立 context 同样注入后连续 16 题全对，最终仍为自由刷题。'
   );
   lines.push(
-    '- 跨午夜（`page.clock` 模拟本地时间）：① 应用停在前台、已完成当天目标时跨过 00:00，自动重置为第二天 `0 / 20` 并重新显示进度条；② 第 20 题庆祝特效播放期间跨过 00:00，特效结束后显示第二天 `0 / 20`（不会停留在昨天的自由刷题）。'
+    '- 跨午夜（`page.clock` 模拟本地时间）：① 应用停在前台、已完成当天目标时跨过 00:00，自动重置为第二天 `0 / 10` 并重新显示进度条；② 23:59:58 答对最后一题（完成每日目标）的庆祝特效播放期间跨过 00:00，特效结束后显示第二天 `0 / 10`（不会停留在昨天的自由刷题）。'
+  );
+  lines.push(
+    '- 震动路径：app.js 优先调用 MainActivity 注入的 `window.AstroNativeVibrate.vibrate(200)`（直接驱动 Android Vibrator），不再依赖会静默失败的 `navigator.vibrate`；原生桥缺失或抛出异常时回退 `navigator.vibrate`，两条路径都不中断答题流程。'
   );
   lines.push('');
   lines.push('## 控制台错误 / 页面异常 / 请求失败');
   lines.push('');
   if (consoleErrors.length === 0) {
     lines.push(
-      '无（两个视口 + 每日目标独立 context + 跨午夜 context 全程 0 条 console error / warning / pageerror / requestfailed）。'
+      '无（两个视口 + 每日目标独立 context + 震动路径 context + 跨午夜 context 全程 0 条 console error / warning / pageerror / requestfailed）。'
     );
   } else {
     lines.push('| 视口 | 类型 | 内容 |');
@@ -3427,6 +3723,7 @@ try {
   }
   await testColdStart(browser);
   await testDailyGoal(browser);
+  await testVibrationBridge(browser);
   await testDailyMidnight(browser);
 } catch (err) {
   launchError = String(err && err.stack ? err.stack : err);
