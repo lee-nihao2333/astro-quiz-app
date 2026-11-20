@@ -162,7 +162,7 @@
     }
   }
 
-  // 加载并归一化每日状态：跨天 / 非法数据会自动重置为今天 0 / 20。
+  // 加载并归一化每日状态：跨天 / 非法数据会自动重置为今天 0 / 目标题数。
   function loadDaily(now) {
     daily = D.normalizeDaily(readStored(D.STORAGE_KEY), now);
     saveDaily();
@@ -194,7 +194,7 @@
     return Math.max(0, next.getTime() - now);
   }
 
-  // 应用一直停在后台/前台跨过 00:00 时，也要在第二天自动切回 0 / 20。
+  // 应用一直停在后台/前台跨过 00:00 时，也要在第二天自动切回 0 / 目标题数。
   // 定时器可能在后台被系统冻结，回到前台时还会再同步一次（见 visibilitychange）。
   function scheduleMidnightReset() {
     clearTimeout(midnightTimer);
@@ -235,15 +235,26 @@
     return result.completedNow;
   }
 
-  // 手机震动一下：Android WebView 需要 AndroidManifest 的 VIBRATE 权限；
-  // 不支持时静默（桌面浏览器 / 旧设备）。
+  // 手机震动一下：优先调用 MainActivity 注入的原生桥 AstroNativeVibrate，
+  // 直接驱动 Android Vibrator；桥不可用或调用失败时退回 navigator.vibrate。
+  // Android WebView 的 navigator.vibrate 在静音模式、无用户手势或 WebView/ROM
+  // 差异下可能返回 false 或静默忽略而不抛异常，因此不能只依赖它。
   function vibrateOnce() {
+    try {
+      const bridge = window.AstroNativeVibrate;
+      if (bridge && typeof bridge.vibrate === "function") {
+        bridge.vibrate(VIBRATE_MS);
+        return;
+      }
+    } catch (err) {
+      /* 原生桥不可用时继续尝试浏览器 API */
+    }
     try {
       if (typeof navigator.vibrate === "function") {
         navigator.vibrate(VIBRATE_MS);
       }
     } catch (err) {
-      /* 忽略震动失败 */
+      /* 忽略震动失败，不影响答题流程 */
     }
   }
 
@@ -323,7 +334,7 @@
       if ($confetti) $confetti.textContent = "";
       // 特效可能跨越本地 00:00：结束时再对齐一次日期，避免继续显示昨天的“自由刷题”
       syncDaily(Date.now());
-      renderDaily(); // 隐藏进度条，切换为“自由刷题”（或跨天后重新显示 0 / 20）
+      renderDaily(); // 隐藏进度条，切换为“自由刷题”（或跨天后重新显示 0 / 目标题数）
       goToNext();
     }, CELEBRATE_FADE_MS);
   }
@@ -660,7 +671,7 @@
     // 先落盘（含下一题 currentId），反馈 / 切换期间退出也不会丢进度
     saveState();
 
-    // 只有答对才推进每日目标；第 20 题会触发震动 + 完成特效，随后进入自由刷题
+    // 只有答对才推进每日目标；达到每日目标题数时会触发震动 + 完成特效，随后进入自由刷题
     const completedNow = recordDaily(ok, now);
 
     // 先显示约 600ms 的对错反馈：
@@ -697,8 +708,8 @@
     });
   }
 
-  // 从后台回到前台时检查跨天：第二天打开应重新显示 0 / 20 的进度条。
-  // 庆祝特效期间也同步日期（但不立即渲染，避免把特效中的 20 / 20 提前换掉）；
+  // 从后台回到前台时检查跨天：第二天打开应重新显示「0 / 目标题数」的进度条。
+  // 庆祝特效期间也同步日期（但不立即渲染，避免把特效中的「目标题数 / 目标题数」提前换掉）；
   // 同时重置 00:00 定时器，防止后台冻结导致的旧计时。
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState !== "visible" || !daily || !D) return;
